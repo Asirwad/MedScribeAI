@@ -1,11 +1,13 @@
+
 'use client';
 
 import React, { useRef, useEffect } from 'react'; // Removed useState
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Loader2 } from 'lucide-react';
+import { Mic, MicOff, Loader2, StopCircle } from 'lucide-react'; // Added StopCircle
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils'; // Import cn for conditional classes
 
 interface LiveTranscriptionProps {
   onManualTranscriptChange: (transcript: string) => void;
@@ -29,7 +31,6 @@ export function LiveTranscription({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
-  // Removed internal statusMessage state, rely on isListening/isTranscribing
 
   // Function to handle starting recording
   const startRecording = async () => {
@@ -51,7 +52,7 @@ export function LiveTranscription({
            toast({ title: "Recording Stopped", description: "Processing audio..." });
            onAudioBlob(audioBlob); // Send blob to parent
         } else {
-            toast({ title: "Recording Stopped", description: "No audio data captured.", variant: "destructive" });
+            toast({ title: "Recording Stopped", description: "No audio data captured.", variant: "default" }); // Use default variant
         }
 
         // Stop the tracks to release the microphone
@@ -81,6 +82,7 @@ export function LiveTranscription({
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
       // Status message set in onstop handler
+      toast({ title: "Stopping Recording...", description: "Please wait." }); // Indicate stopping
     }
      // If stopped manually before any data, ensure listening state is updated
      if (isListening) {
@@ -107,18 +109,17 @@ export function LiveTranscription({
   }
 
    const getPlaceholderText = () => {
-     if (isListening) return "Listening...";
-     if (isTranscribing) return "Processing audio...";
+     if (isListening) return "Recording in progress... Speak now.";
+     if (isTranscribing) return "Processing audio transcript...";
      return "Start recording or manually enter/edit transcript here...";
    }
 
    const getStatusText = () => {
-      if (isListening) return "Listening...";
-      if (isTranscribing) return "Processing audio...";
+      // Removed status text, relying on button state and textarea placeholder/disabled state
       return null;
    }
 
-   const statusText = getStatusText();
+   const statusText = getStatusText(); // Keep variable for consistency if needed later
 
 
   return (
@@ -126,14 +127,23 @@ export function LiveTranscription({
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle>Live Transcription / Manual Entry</CardTitle>
         <Button
-          variant="outline"
+          variant={isListening ? "destructive" : "outline"} // Change variant when listening
           size="icon"
           onClick={isListening ? stopRecording : startRecording}
           disabled={disabled || isTranscribing} // Disable button if parent says disabled OR if currently processing audio
           aria-label={isListening ? 'Stop Recording' : 'Start Recording'}
+          className={cn(
+            "relative overflow-visible", // Ensure ping animation isn't clipped
+             isListening ? "bg-red-500 hover:bg-red-600 text-white" : "" // Destructive styling
+          )}
         >
+           {isListening && (
+             <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
+           )}
           {isListening ? (
-            <MicOff className="text-destructive" />
+             <>
+                <StopCircle className="relative z-10 h-5 w-5" /> {/* Stop icon */}
+             </>
           ) : isTranscribing ? (
              <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -147,7 +157,11 @@ export function LiveTranscription({
           value={transcriptValue} // Controlled by parent state
           onChange={handleTextareaChange} // Use internal handler
           rows={8}
-          className="w-full bg-secondary/30"
+          className={cn(
+             "w-full bg-secondary/30 transition-opacity duration-300",
+             isListening ? "opacity-50 cursor-not-allowed" : "opacity-100", // Dim textarea when listening
+             isTranscribing ? "opacity-50 cursor-wait" : "opacity-100" // Dim when transcribing
+           )}
           disabled={disabled || isListening || isTranscribing} // Disable text area while listening or processing or if parent disabled
           readOnly={isListening || isTranscribing} // Make explicitly read-only during these states
         />
