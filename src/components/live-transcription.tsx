@@ -1,13 +1,14 @@
 
 'use client';
 
-import React, { useRef, useEffect } from 'react'; // Removed useState
+import React, { useRef, useEffect, useState } from 'react'; // Added useState
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Loader2, StopCircle } from 'lucide-react'; // Added StopCircle
+import { Mic, StopCircle, Loader2 } from 'lucide-react'; // Removed MicOff, added StopCircle
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils'; // Import cn for conditional classes
+import { RecordingOverlay } from '@/components/recording-overlay'; // Import the new overlay
 
 interface LiveTranscriptionProps {
   onManualTranscriptChange: (transcript: string) => void;
@@ -30,6 +31,7 @@ export function LiveTranscription({
 }: LiveTranscriptionProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const [recordingStartTime, setRecordingStartTime] = useState<Date | null>(null); // State for start time
   const { toast } = useToast();
 
   // Function to handle starting recording
@@ -58,10 +60,12 @@ export function LiveTranscription({
         // Stop the tracks to release the microphone
         stream.getTracks().forEach(track => track.stop());
         setIsListening(false); // Update parent state
+        setRecordingStartTime(null); // Clear start time
       };
 
       mediaRecorderRef.current.start();
       setIsListening(true); // Update parent state
+      setRecordingStartTime(new Date()); // Set start time
       toast({ title: "Recording Started", description: "Microphone is active." });
 
     } catch (err) {
@@ -74,6 +78,7 @@ export function LiveTranscription({
       }
       toast({ title: "Microphone Error", description: description, variant: "destructive" });
       setIsListening(false); // Update parent state
+      setRecordingStartTime(null); // Clear start time
     }
   };
 
@@ -87,6 +92,7 @@ export function LiveTranscription({
      // If stopped manually before any data, ensure listening state is updated
      if (isListening) {
         setIsListening(false); // Update parent state
+        setRecordingStartTime(null); // Clear start time
      }
   };
 
@@ -109,66 +115,56 @@ export function LiveTranscription({
   }
 
    const getPlaceholderText = () => {
-     if (isListening) return "Recording in progress... Speak now.";
+     if (isListening) return "Recording in progress..."; // Placeholder updated
      if (isTranscribing) return "Processing audio transcript...";
      return "Start recording or manually enter/edit transcript here...";
    }
 
-   const getStatusText = () => {
-      // Removed status text, relying on button state and textarea placeholder/disabled state
-      return null;
-   }
-
-   const statusText = getStatusText(); // Keep variable for consistency if needed later
-
-
   return (
-    <Card className="mb-6 shadow-md">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle>Live Transcription / Manual Entry</CardTitle>
-        <Button
-          variant={isListening ? "destructive" : "outline"} // Change variant when listening
-          size="icon"
-          onClick={isListening ? stopRecording : startRecording}
-          disabled={disabled || isTranscribing} // Disable button if parent says disabled OR if currently processing audio
-          aria-label={isListening ? 'Stop Recording' : 'Start Recording'}
-          className={cn(
-            "relative overflow-visible", // Ensure ping animation isn't clipped
-             isListening ? "bg-red-500 hover:bg-red-600 text-white" : "" // Destructive styling
-          )}
-        >
-           {isListening && (
-             <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75 animate-ping"></span>
-           )}
-          {isListening ? (
-             <>
-                <StopCircle className="relative z-10 h-5 w-5" /> {/* Stop icon */}
-             </>
-          ) : isTranscribing ? (
-             <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-             <Mic className="text-primary" />
-          )}
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <Textarea
-          placeholder={getPlaceholderText()}
-          value={transcriptValue} // Controlled by parent state
-          onChange={handleTextareaChange} // Use internal handler
-          rows={8}
-          className={cn(
-             "w-full bg-secondary/30 transition-opacity duration-300",
-             isListening ? "opacity-50 cursor-not-allowed" : "opacity-100", // Dim textarea when listening
-             isTranscribing ? "opacity-50 cursor-wait" : "opacity-100" // Dim when transcribing
-           )}
-          disabled={disabled || isListening || isTranscribing} // Disable text area while listening or processing or if parent disabled
-          readOnly={isListening || isTranscribing} // Make explicitly read-only during these states
-        />
-         {statusText && (
-             <p className="text-sm text-muted-foreground mt-2">{statusText}</p>
-         )}
-      </CardContent>
-    </Card>
+    <>
+      <Card className="mb-6 shadow-md">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle>Live Transcription / Manual Entry</CardTitle>
+          <Button
+            variant={isListening ? "destructive" : "outline"} // Change variant when listening
+            size="icon"
+            onClick={isListening ? stopRecording : startRecording}
+            disabled={disabled || isTranscribing} // Disable button if parent says disabled OR if currently processing audio
+            aria-label={isListening ? 'Stop Recording' : 'Start Recording'}
+            className={cn(
+              "relative overflow-visible", // Ensure ping animation isn't clipped
+              isListening ? "bg-red-500 hover:bg-red-600 text-white" : "" // Destructive styling
+              // Removed pulsating animation classes
+            )}
+          >
+            {isListening ? (
+                <StopCircle className="h-5 w-5" /> // Stop icon
+            ) : isTranscribing ? (
+               <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+               <Mic className="text-primary h-5 w-5" /> // Mic icon slightly bigger
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            placeholder={getPlaceholderText()}
+            value={transcriptValue} // Controlled by parent state
+            onChange={handleTextareaChange} // Use internal handler
+            rows={8}
+            className={cn(
+               "w-full bg-secondary/30 transition-opacity duration-300",
+               isListening ? "opacity-50 cursor-not-allowed" : "opacity-100", // Dim textarea when listening
+               isTranscribing ? "opacity-50 cursor-wait" : "opacity-100" // Dim when transcribing
+             )}
+            disabled={disabled || isListening || isTranscribing} // Disable text area while listening or processing or if parent disabled
+            readOnly={isListening || isTranscribing} // Make explicitly read-only during these states
+          />
+        </CardContent>
+      </Card>
+       {/* Render the overlay */}
+      <RecordingOverlay isListening={isListening} startTime={recordingStartTime} />
+    </>
   );
 }
+
