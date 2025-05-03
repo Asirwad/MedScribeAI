@@ -151,7 +151,7 @@ export function AgentVisualizationOverlay({ agentState }: AgentVisualizationOver
                         <span className={cn(
                             "text-sm font-medium flex-grow",
                              isActive ? `font-semibold ${stepColor}` :
-                             isCompleted ? 'text-muted-foreground line-through' :
+                             isCompleted ? 'text-muted-foreground' :
                              isError ? 'text-destructive font-semibold' : // Error text styling
                              'text-foreground'
                         )}>
