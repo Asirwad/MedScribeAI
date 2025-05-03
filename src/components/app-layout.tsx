@@ -20,8 +20,9 @@ import {
 } from '@/components/ui/sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Home, Users, Settings, FileText, UserPlus } from 'lucide-react'; // Added UserPlus
+import { Users, Settings, UserPlus } from 'lucide-react'; // Removed Home, FileText
 import type { Patient } from '@/services/ehr_client';
+import { ThemeToggle } from '@/components/theme-toggle'; // Import ThemeToggle
 
 interface AppLayoutProps {
   patients: Patient[];
@@ -85,9 +86,12 @@ export function AppLayout({
            <Button variant="outline" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2" onClick={onAddPatient} aria-label='Add Patient'>
              <UserPlus /> <span className="group-data-[collapsible=icon]:hidden">Add Patient</span>
            </Button>
-          <Button variant="ghost" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2" aria-label='Settings'>
-            <Settings /> <span className="group-data-[collapsible=icon]:hidden">Settings</span>
-          </Button>
+          <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
+            <Button variant="ghost" className="flex-1 justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-none" aria-label='Settings'>
+              <Settings /> <span className="group-data-[collapsible=icon]:hidden">Settings</span>
+            </Button>
+            <ThemeToggle /> {/* Add ThemeToggle */}
+          </div>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>{children}</SidebarInset>
