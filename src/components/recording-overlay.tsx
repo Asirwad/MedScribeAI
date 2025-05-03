@@ -62,12 +62,23 @@ export function RecordingOverlay({ isListening, startTime, onStopRecording }: Re
           animate="visible"
           exit="exit"
           className={cn(
-            "fixed inset-x-0 bottom-0 z-50 p-4 pointer-events-none" // Position at the bottom
+            "fixed inset-0 z-50 flex items-end justify-center p-4 bg-background/80 backdrop-blur-sm pointer-events-none" // Blurred background, positioned at bottom
           )}
           aria-live="polite"
           aria-label="Recording active"
         >
-          <div className="max-w-lg mx-auto bg-card rounded-xl shadow-2xl border border-border p-4 pointer-events-auto flex items-center justify-between gap-4"> {/* Make card interactive */}
+          {/* Inner container for content, allowing interaction */}
+          <motion.div
+             className="max-w-lg w-full bg-card rounded-xl shadow-2xl border border-border p-4 pointer-events-auto flex items-center justify-between gap-4 mb-4 md:mb-8" // Positioned at bottom, interactive
+             variants={{ // Simple variant for inner card entrance
+                 hidden: { opacity: 0, y: 20 },
+                 visible: { opacity: 1, y: 0, transition: { delay: 0.1, duration: 0.3 } },
+                 exit: { opacity: 0, y: 20, transition: { duration: 0.2 } }
+             }}
+             initial="hidden"
+             animate="visible"
+             exit="exit"
+          >
              {/* Left Section: Icon and Timer */}
              <div className="flex items-center gap-3">
                {/* Animated Microphone Icon */}
@@ -109,14 +120,15 @@ export function RecordingOverlay({ isListening, startTime, onStopRecording }: Re
                  Stop
              </Button>
 
-          </div>
-          {/* Disclaimer on mobile (below the main bar) */}
-           <div className="md:hidden text-center text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1">
+          </motion.div>
+           {/* Disclaimer on mobile (can be placed inside or outside the card, here outside) */}
+           {/* <div className="md:hidden text-center text-xs text-muted-foreground mt-2 flex items-center justify-center gap-1 pointer-events-auto">
                <ShieldCheck className="h-3 w-3 text-green-600 flex-shrink-0" />
                <span>Data protection enabled</span>
-            </div>
+            </div> */}
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
+
