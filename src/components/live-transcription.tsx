@@ -5,7 +5,7 @@ import React, { useRef, useEffect, useState } from 'react'; // Added useState
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Mic, StopCircle, Loader2 } from 'lucide-react'; // Removed MicOff, added StopCircle
+import { Mic, StopCircle, Loader2 } from 'lucide-react'; // Correct icons
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils'; // Import cn for conditional classes
 import { RecordingOverlay } from '@/components/recording-overlay'; // Import the new overlay
@@ -39,7 +39,7 @@ export function LiveTranscription({
     if (isTranscribing || isListening) return; // Don't start if already processing or listening
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' }); // Explicitly use webm
       audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
@@ -49,7 +49,7 @@ export function LiveTranscription({
       };
 
       mediaRecorderRef.current.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Ensure correct type
         if (audioBlob.size > 0) {
            toast({ title: "Recording Stopped", description: "Processing audio..." });
            onAudioBlob(audioBlob); // Send blob to parent
@@ -75,6 +75,8 @@ export function LiveTranscription({
         description = "Microphone access denied. Please allow access in your browser settings.";
       } else if (err instanceof DOMException && err.name === 'NotFoundError') {
          description = "No microphone found. Please ensure a microphone is connected and enabled.";
+      } else if (err instanceof Error && err.message.includes('mimeType')) {
+          description = "Audio recording format (webm) might not be supported by your browser.";
       }
       toast({ title: "Microphone Error", description: description, variant: "destructive" });
       setIsListening(false); // Update parent state
@@ -90,9 +92,12 @@ export function LiveTranscription({
       toast({ title: "Stopping Recording...", description: "Please wait." }); // Indicate stopping
     }
      // If stopped manually before any data, ensure listening state is updated
+     // This might be redundant due to onstop, but ensures state consistency
      if (isListening) {
         setIsListening(false); // Update parent state
         setRecordingStartTime(null); // Clear start time
+        // If stream exists but recorder didn't trigger onstop (unlikely)
+        mediaRecorderRef.current?.stream?.getTracks().forEach(track => track.stop());
      }
   };
 
@@ -115,10 +120,15 @@ export function LiveTranscription({
   }
 
    const getPlaceholderText = () => {
-     if (isListening) return "Recording in progress..."; // Placeholder updated
+     if (isListening) return "Recording in progress... Click stop button to finish."; // Placeholder updated
      if (isTranscribing) return "Processing audio transcript...";
      return "Start recording or manually enter/edit transcript here...";
    }
+
+  // Determine if the button should be disabled for STARTING actions.
+  // Stopping should always be enabled if listening.
+  const isStartDisabled = disabled || isListening || isTranscribing;
+
 
   return (
     <>
@@ -129,21 +139,21 @@ export function LiveTranscription({
             variant={isListening ? "destructive" : "outline"} // Change variant when listening
             size="icon"
             onClick={isListening ? stopRecording : startRecording}
-            // Allow stopping even if other actions are disabled, but not starting
-            disabled={disabled && !isListening || isTranscribing}
+            // Disable starting if other actions are disabled or already listening/transcribing.
+            // NEVER disable stopping if already listening.
+            disabled={isListening ? false : isStartDisabled}
             aria-label={isListening ? 'Stop Recording' : 'Start Recording'}
             className={cn(
               "relative overflow-visible", // Ensure ping animation isn't clipped
               isListening ? "bg-red-500 hover:bg-red-600 text-white" : "" // Destructive styling
-              // Removed pulsating animation classes
             )}
           >
             {isListening ? (
-                <StopCircle className="h-5 w-5" /> // Stop icon
+                <StopCircle className="h-5 w-5" /> // Use StopCircle when listening
             ) : isTranscribing ? (
-               <Loader2 className="h-4 w-4 animate-spin" />
+               <Loader2 className="h-4 w-4 animate-spin" /> // Show loader only when transcribing (after stop)
             ) : (
-               <Mic className="text-primary h-5 w-5" /> // Mic icon slightly bigger
+               <Mic className="text-primary h-5 w-5" /> // Show Mic when idle/not listening
             )}
           </Button>
         </CardHeader>
@@ -158,7 +168,8 @@ export function LiveTranscription({
                isListening ? "opacity-50 cursor-not-allowed" : "opacity-100", // Dim textarea when listening
                isTranscribing ? "opacity-50 cursor-wait" : "opacity-100" // Dim when transcribing
              )}
-            disabled={disabled || isListening || isTranscribing} // Disable text area while listening or processing or if parent disabled
+            // Disable text area if parent disabled, or while listening or transcribing
+            disabled={disabled || isListening || isTranscribing}
             readOnly={isListening || isTranscribing} // Make explicitly read-only during these states
           />
         </CardContent>
@@ -168,5 +179,3 @@ export function LiveTranscription({
     </>
   );
 }
-
-    

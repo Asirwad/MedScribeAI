@@ -15,7 +15,7 @@ import { transcribePatientEncounter } from '@/ai/flows/transcribe-patient-encoun
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Brain, Mic, MicOff, Loader2 } from 'lucide-react'; // Added Mic icons
+import { RefreshCw, Brain } from 'lucide-react'; // Removed Mic icons, handled in LiveTranscription
 import { AddPatientForm } from '@/components/add-patient-form';
 import { AgentVisualizationOverlay, AgentState } from '@/components/agent-visualization-overlay';
 
@@ -58,6 +58,7 @@ export default function Home() {
 
     const transitionToNext = () => {
        setAgentState((currentState) => {
+           // Only transition if the state hasn't changed to something else (like error) in the meantime
            if (currentState === newState && nextState !== null) {
                return nextState; // Transition to the planned next state
            } else if (currentState === newState) {
@@ -171,6 +172,14 @@ export default function Home() {
  // Handler for processing audio blob (Real-Time Listening Agent)
  const handleAudioBlob = useCallback(async (audioBlob: Blob) => {
     if (!selectedPatient) return; // Ensure patient context exists
+    if (audioBlob.size === 0) {
+        toast({ title: "Empty Audio", description: "No audio data was captured.", variant: "default" });
+        setIsTranscribing(false); // Ensure state is reset
+        setIsListening(false); // Also ensure listening stops
+        transitionAgentState('idle'); // Go back to idle if recording stopped with no data
+        return;
+    }
+
 
     setIsTranscribing(true);
     transitionAgentState('transcribing'); // Start transcribing state
@@ -252,7 +261,6 @@ export default function Home() {
         });
 
         setSoapNote(result.soapNote);
-        //setIsGeneratingSoap(false); // Let transition handle this now
         toast({ title: 'SOAP Note Generated', description: 'Review and edit the note below. Generating codes...' });
 
         // Chain to billing code generation ONLY after successful SOAP generation
@@ -321,7 +329,8 @@ export default function Home() {
   }, [patients, selectedPatient, handleSelectPatient, isFetchingData]);
 
    // Determine if actions should be disabled based on agent states or ongoing operations
-   const isActionDisabled = isFetchingData || isTranscribing || isGeneratingSoap || isGeneratingCodes || isSavingNote || isListening; // Added isListening
+   // Note: isListening check is handled primarily within LiveTranscription now
+   const isActionDisabled = isFetchingData || isTranscribing || isGeneratingSoap || isGeneratingCodes || isSavingNote;
    const isAgentBusy = agentState !== 'idle' && agentState !== 'error'; // Agent is visually busy
 
 
@@ -347,19 +356,21 @@ export default function Home() {
              onAudioBlob={handleAudioBlob} // Real-Time Listening Agent trigger
              isTranscribing={isTranscribing}
              transcriptValue={transcript}
-             disabled={isActionDisabled && !isListening} // Disable most actions but allow stopping listening
+             disabled={isActionDisabled} // Pass general disabled state (LiveTranscription handles its own logic for stop btn)
              isListening={isListening}
-             setIsListening={setIsListening} // Pass setter down
+             setIsListening={setIsListening} // Pass state and setter down
            />
 
           {/* Button to trigger the Documentation Agent (SOAP + Codes) */}
-          {transcript && selectedPatient && ( // Removed !isFetchingData check, handled by isActionDisabled/isAgentBusy
+          {/* Show button if there's a transcript, a patient, and NOT currently listening */}
+          {transcript && selectedPatient && !isListening && (
              <div className="flex justify-end">
                <Button
                  onClick={handleGenerateSoapNote} // Starts Documentation Agent workflow
-                 disabled={isActionDisabled || isAgentBusy || !transcript || !patientHistory} // Disable if actions/agent busy, or no transcript/history
+                 // Disable if other actions/agent busy, or no transcript/history, or currently listening
+                 disabled={isActionDisabled || isAgentBusy || !transcript || !patientHistory}
                >
-                 {(isGeneratingSoap || isGeneratingCodes) ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
+                 {isGeneratingSoap || isGeneratingCodes ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
                  Generate SOAP & Codes
                </Button>
              </div>
@@ -371,7 +382,8 @@ export default function Home() {
             isLoading={isGeneratingSoap} // Only show SOAP loading state here
             isSaving={isSavingNote}
             onSave={handleSaveNote} // Trigger EHR Agent
-            disabled={isActionDisabled || isAgentBusy} // Disable editing/saving based on actions or busy agent
+            // Disable editing/saving based on actions or busy agent or if listening
+            disabled={isActionDisabled || isAgentBusy || isListening}
           />
 
           <BillingCodes
@@ -392,5 +404,3 @@ export default function Home() {
      </>
   );
 }
-
-    
