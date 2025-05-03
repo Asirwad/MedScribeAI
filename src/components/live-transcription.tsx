@@ -1,20 +1,20 @@
-
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react'; // Removed useState
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Mic, MicOff, Loader2 } from 'lucide-react'; // Added Loader2
+import { Mic, MicOff, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-// Removed transcribePatientEncounter import as it's now handled in the parent
 
 interface LiveTranscriptionProps {
-  onManualTranscriptChange: (transcript: string) => void; // Renamed for clarity
-  onAudioBlob: (blob: Blob) => void; // New prop for sending audio blob
+  onManualTranscriptChange: (transcript: string) => void;
+  onAudioBlob: (blob: Blob) => void;
   isTranscribing: boolean; // Receive transcribing state from parent
   transcriptValue: string; // Receive transcript value from parent
-  disabled?: boolean;
+  disabled?: boolean; // Overall disable flag from parent
+  isListening: boolean; // Receive listening state from parent
+  setIsListening: (listening: boolean) => void; // Function to update listening state in parent
 }
 
 export function LiveTranscription({
@@ -22,21 +22,22 @@ export function LiveTranscription({
   onAudioBlob,
   isTranscribing,
   transcriptValue,
-  disabled = false
+  disabled = false,
+  isListening, // Use prop
+  setIsListening, // Use prop
 }: LiveTranscriptionProps) {
-  const [isListening, setIsListening] = useState(false);
-  const [statusMessage, setStatusMessage] = useState(''); // For user feedback (Listening..., Processing...)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
+  // Removed internal statusMessage state, rely on isListening/isTranscribing
 
   // Function to handle starting recording
   const startRecording = async () => {
-    if (isTranscribing) return; // Don't start if already processing
+    if (isTranscribing || isListening) return; // Don't start if already processing or listening
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' }); // Explicitly set mimeType
-      audioChunksRef.current = []; // Reset chunks
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      audioChunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -47,27 +48,23 @@ export function LiveTranscription({
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         if (audioBlob.size > 0) {
-           setStatusMessage('Processing audio...');
            toast({ title: "Recording Stopped", description: "Processing audio..." });
            onAudioBlob(audioBlob); // Send blob to parent
         } else {
-            setStatusMessage(''); // No audio recorded
             toast({ title: "Recording Stopped", description: "No audio data captured.", variant: "destructive" });
         }
 
         // Stop the tracks to release the microphone
         stream.getTracks().forEach(track => track.stop());
-        setIsListening(false); // Set listening to false *after* tracks are stopped
+        setIsListening(false); // Update parent state
       };
 
       mediaRecorderRef.current.start();
-      setIsListening(true);
-      setStatusMessage('Listening...');
+      setIsListening(true); // Update parent state
       toast({ title: "Recording Started", description: "Microphone is active." });
 
     } catch (err) {
       console.error('Error accessing microphone:', err);
-      // Check for specific error types if needed
       let description = "Could not access the microphone. Please check permissions.";
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
         description = "Microphone access denied. Please allow access in your browser settings.";
@@ -75,8 +72,7 @@ export function LiveTranscription({
          description = "No microphone found. Please ensure a microphone is connected and enabled.";
       }
       toast({ title: "Microphone Error", description: description, variant: "destructive" });
-      setIsListening(false);
-      setStatusMessage(''); // Clear status message
+      setIsListening(false); // Update parent state
     }
   };
 
@@ -88,28 +84,20 @@ export function LiveTranscription({
     }
      // If stopped manually before any data, ensure listening state is updated
      if (isListening) {
-        setIsListening(false);
+        setIsListening(false); // Update parent state
      }
   };
 
   // Cleanup effect
   useEffect(() => {
     return () => {
-      // Ensure media recorder is stopped and stream tracks are released on unmount
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
+         // Also ensure tracks are stopped if recorder existed
+         mediaRecorderRef.current?.stream?.getTracks().forEach(track => track.stop());
       }
-      // Additionally, check if tracks are still active and stop them
-       mediaRecorderRef.current?.stream?.getTracks().forEach(track => track.stop());
     };
   }, []);
-
-  // Update status message when transcription starts/ends externally
-  useEffect(() => {
-      if (!isTranscribing && statusMessage === 'Processing audio...') {
-          setStatusMessage(''); // Clear processing message when done
-      }
-  }, [isTranscribing, statusMessage]);
 
 
   const handleTextareaChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -117,6 +105,21 @@ export function LiveTranscription({
         onManualTranscriptChange(event.target.value);
      }
   }
+
+   const getPlaceholderText = () => {
+     if (isListening) return "Listening...";
+     if (isTranscribing) return "Processing audio...";
+     return "Start recording or manually enter/edit transcript here...";
+   }
+
+   const getStatusText = () => {
+      if (isListening) return "Listening...";
+      if (isTranscribing) return "Processing audio...";
+      return null;
+   }
+
+   const statusText = getStatusText();
+
 
   return (
     <Card className="mb-6 shadow-md">
@@ -126,7 +129,7 @@ export function LiveTranscription({
           variant="outline"
           size="icon"
           onClick={isListening ? stopRecording : startRecording}
-          disabled={disabled || isTranscribing} // Disable button during transcription processing too
+          disabled={disabled || isTranscribing} // Disable button if parent says disabled OR if currently processing audio
           aria-label={isListening ? 'Stop Recording' : 'Start Recording'}
         >
           {isListening ? (
@@ -140,16 +143,16 @@ export function LiveTranscription({
       </CardHeader>
       <CardContent>
         <Textarea
-          placeholder={isListening ? "Listening..." : isTranscribing ? "Processing audio..." : "Start recording or manually enter/edit transcript here..."}
+          placeholder={getPlaceholderText()}
           value={transcriptValue} // Controlled by parent state
           onChange={handleTextareaChange} // Use internal handler
           rows={8}
           className="w-full bg-secondary/30"
-          disabled={disabled || isListening || isTranscribing} // Disable text area while listening or processing
+          disabled={disabled || isListening || isTranscribing} // Disable text area while listening or processing or if parent disabled
           readOnly={isListening || isTranscribing} // Make explicitly read-only during these states
         />
-         {(isListening || isTranscribing) && statusMessage && (
-             <p className="text-sm text-muted-foreground mt-2">{statusMessage}</p>
+         {statusText && (
+             <p className="text-sm text-muted-foreground mt-2">{statusText}</p>
          )}
       </CardContent>
     </Card>

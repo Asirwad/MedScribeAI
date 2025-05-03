@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react'; // Added useRef
 import { AppLayout } from '@/components/app-layout';
 import { PatientSummary } from '@/components/patient-summary';
 import { LiveTranscription } from '@/components/live-transcription';
@@ -15,9 +15,12 @@ import { transcribePatientEncounter } from '@/ai/flows/transcribe-patient-encoun
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Brain } from 'lucide-react';
+import { RefreshCw, Brain, Mic, MicOff, Loader2 } from 'lucide-react'; // Added Mic icons
 import { AddPatientForm } from '@/components/add-patient-form';
-import { AgentVisualizationOverlay, AgentState } from '@/components/agent-visualization-overlay'; // Import visualization overlay
+import { AgentVisualizationOverlay, AgentState } from '@/components/agent-visualization-overlay';
+
+// Minimum time (in ms) to display each agent state in the overlay
+const MIN_AGENT_STATE_DISPLAY_TIME = 1500; // Increased for better readability
 
 export default function Home() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -31,12 +34,46 @@ export default function Home() {
   const [isGeneratingCodes, setIsGeneratingCodes] = useState<boolean>(false);
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
-  const [isFetchingData, setIsFetchingData] = useState<boolean>(false); // New state for pre-visit data fetching
+  const [isFetchingData, setIsFetchingData] = useState<boolean>(false);
   const [patientHistory, setPatientHistory] = useState<string>('');
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
-  const [agentState, setAgentState] = useState<AgentState>('idle'); // State for visualization overlay
+  const [agentState, setAgentState] = useState<AgentState>('idle');
+  const agentStateTimerRef = useRef<NodeJS.Timeout | null>(null); // Ref to track state transition timer
+  const [isListening, setIsListening] = useState<boolean>(false); // State for mic listening
 
   const { toast } = useToast();
+
+  // Helper function to manage agent state transitions with minimum display time
+  const transitionAgentState = useCallback((newState: AgentState, nextState: AgentState | null = null) => {
+    if (agentStateTimerRef.current) {
+      clearTimeout(agentStateTimerRef.current);
+    }
+    setAgentState(newState);
+
+    // Clear timer immediately if the new state is 'idle' or 'error'
+    if (newState === 'idle' || newState === 'error') {
+      agentStateTimerRef.current = null;
+      return; // Don't schedule further transitions if we are already idle or errored
+    }
+
+    const transitionToNext = () => {
+       setAgentState((currentState) => {
+           if (currentState === newState && nextState !== null) {
+               return nextState; // Transition to the planned next state
+           } else if (currentState === newState) {
+                // If no explicit next state, go to idle after delay
+                return 'idle';
+           }
+           // If state changed meanwhile (e.g., error), keep that state
+           return currentState;
+       });
+       agentStateTimerRef.current = null;
+    };
+
+    agentStateTimerRef.current = setTimeout(transitionToNext, MIN_AGENT_STATE_DISPLAY_TIME);
+
+  }, []); // No dependencies needed for this helper itself
+
 
    // Load initial patients - Simulates pre-existing patient list
    useEffect(() => {
@@ -52,7 +89,7 @@ export default function Home() {
   // Simulate Pre-Visit Agent: Fetches data for the selected patient
   const fetchPatientData = useCallback(async (patientId: string) => {
     setIsFetchingData(true);
-    setAgentState('fetching_data'); // Update agent state
+    transitionAgentState('fetching_data'); // Start fetching state
     try {
       // Reset state for the new patient
       setTranscript('');
@@ -63,6 +100,7 @@ export default function Home() {
       setIsSavingNote(false);
       setIsTranscribing(false);
       setPatientHistory('');
+      setIsListening(false); // Reset listening state
 
       // Fetch data via EHR Agent (ehr_client)
       const [patientData, obsData, encData] = await Promise.all([
@@ -83,6 +121,9 @@ export default function Home() {
       `.trim();
       setPatientHistory(history);
       toast({ title: "Patient Data Loaded", description: `Summary for ${patientData.name} is ready.` });
+      // Fetch successful, transition to idle after minimum display time
+      transitionAgentState('fetching_data', 'idle');
+
 
     } catch (error) {
       console.error('Error fetching patient data:', error);
@@ -94,12 +135,13 @@ export default function Home() {
       setSelectedPatient(null);
       setObservations([]);
       setEncounters([]);
-      setPatientHistory(''); // Clear history on error
+      setPatientHistory('');
+      transitionAgentState('error'); // Set error state directly
     } finally {
       setIsFetchingData(false);
-      setAgentState('idle'); // Reset agent state after fetching or error
+       // Final state handled by transitionAgentState logic
     }
-  }, [toast]);
+  }, [toast, transitionAgentState]); // Removed agentState dependency
 
 
   const handleSelectPatient = (patientId: string) => {
@@ -114,17 +156,16 @@ export default function Home() {
     setTranscript(newTranscript);
     setSoapNote(''); // Reset downstream outputs if transcript changes manually
     setBillingCodes('');
-    setAgentState('idle'); // Manual change means agent is idle
+    // No agent transition needed for manual changes unless we want to explicitly show 'idle'
   }, []);
 
   // Handler for transcription results from the agent
   const handleTranscriptionResult = useCallback((newTranscriptChunk: string) => {
     // Append new chunk to existing transcript
-    const updatedTranscript = transcript ? `${transcript}\n${newTranscriptChunk}` : newTranscriptChunk;
-    setTranscript(updatedTranscript);
+    setTranscript(prev => prev ? `${prev}\n${newTranscriptChunk}` : newTranscriptChunk);
     // Do not reset downstream here, as transcription might be ongoing
     // The final SOAP/Codes generation will use the full transcript later
-  }, [transcript]);
+  }, []);
 
 
  // Handler for processing audio blob (Real-Time Listening Agent)
@@ -132,7 +173,7 @@ export default function Home() {
     if (!selectedPatient) return; // Ensure patient context exists
 
     setIsTranscribing(true);
-    setAgentState('transcribing'); // Update agent state
+    transitionAgentState('transcribing'); // Start transcribing state
     let base64Audio: string | null = null;
 
     try {
@@ -149,21 +190,46 @@ export default function Home() {
       const result = await transcribePatientEncounter({ audioDataUri: base64Audio });
       handleTranscriptionResult(result.transcript); // Append result
       toast({ title: "Transcription Segment Processed", description: "Transcript updated." });
+       // Transcription successful, transition to idle after minimum display time
+       transitionAgentState('transcribing', 'idle');
 
     } catch (error) {
       console.error("Transcription failed:", error);
       toast({ title: "Transcription Error", description: "Failed to process audio segment.", variant: "destructive" });
-       setAgentState('error'); // Indicate error state
-       // Consider adding a brief delay before resetting to idle on error
-       setTimeout(() => setAgentState('idle'), 2000);
+      transitionAgentState('error'); // Set error state directly
     } finally {
       setIsTranscribing(false);
-      // Only reset to idle if no other agent process is immediately following
-      if(agentState === 'transcribing') { // Check if state wasn't changed by an error
-         setAgentState('idle'); // Ready for next segment or action
-      }
+      // Final state handled by transitionAgentState logic
     }
- }, [selectedPatient, handleTranscriptionResult, toast, agentState]);
+ }, [selectedPatient, handleTranscriptionResult, toast, transitionAgentState]); // Added dependencies
+
+
+ // *** IMPORTANT: Define handleGenerateBillingCodes BEFORE handleGenerateSoapNote ***
+
+ // Handler for generating billing codes (Documentation Agent - Step 2)
+ const handleGenerateBillingCodes = useCallback(async (noteToCode: string) => {
+    setIsGeneratingCodes(true);
+    // No state transition here, as it's part of the SOAP->Codes flow started by handleGenerateSoapNote
+    // transitionAgentState('generating_codes'); // This is handled by handleGenerateSoapNote now
+
+    try {
+      // Call AI flow to suggest billing codes
+      const result = await generateBillingCodes({ soapNote: noteToCode });
+      setBillingCodes(result.billingCodes);
+      toast({ title: 'Billing Codes Suggested', description: 'Codes are displayed below.' });
+      // Code generation successful, transition to idle after minimum display time for 'generating_codes' state
+      transitionAgentState('generating_codes', 'idle');
+
+    } catch (error) {
+      console.error('Error generating billing codes:', error);
+      toast({ title: 'Code Suggestion Failed', description: 'Could not suggest billing codes.', variant: 'destructive' });
+      transitionAgentState('error'); // Set error state directly
+    } finally {
+      // Reset only code generation state here, SOAP state reset by caller or success transition
+      setIsGeneratingCodes(false);
+      // Final state handled by transitionAgentState logic
+    }
+  }, [toast, transitionAgentState]); // Removed agentState dependency
 
 
  // Handler for generating SOAP note (Documentation Agent - Step 1)
@@ -173,9 +239,9 @@ export default function Home() {
         return;
     }
     setIsGeneratingSoap(true);
-    setAgentState('generating_soap'); // Update agent state
     setSoapNote(''); // Clear previous note
     setBillingCodes(''); // Clear previous codes
+    transitionAgentState('generating_soap', 'generating_codes'); // Plan to transition to 'generating_codes' next
 
     try {
         // Call AI flow to generate SOAP note
@@ -184,51 +250,25 @@ export default function Home() {
             encounterTranscript: transcript,
             patientHistory: patientHistory, // Use the summary from Pre-Visit Agent
         });
+
         setSoapNote(result.soapNote);
         toast({ title: 'SOAP Note Generated', description: 'Review and edit the note below. Generating codes...' });
 
-        // Chain to billing code generation immediately after SOAP note is ready
+        // Chain to billing code generation ONLY after successful SOAP generation
+        // The transitionAgentState call above handles the visual progression
         await handleGenerateBillingCodes(result.soapNote); // Pass the generated note directly
 
     } catch (error) {
         console.error('Error generating SOAP note:', error);
         toast({ title: 'SOAP Generation Failed', description: 'Could not generate SOAP note.', variant: 'destructive' });
-        setAgentState('error'); // Indicate error state
-        setTimeout(() => setAgentState('idle'), 2000);
         setIsGeneratingSoap(false); // Ensure loading state is reset on error
-        setIsGeneratingCodes(false); // Also reset code loading state
-    }
-    // Note: Loading states (isGeneratingSoap, isGeneratingCodes) and agentState are reset within handleGenerateBillingCodes or the catch block
- }, [selectedPatient, transcript, patientHistory, toast]); // Removed handleGenerateBillingCodes dependency from here
-
- // Handler for generating billing codes (Documentation Agent - Step 2)
- // Now accepts the SOAP note as an argument to ensure it uses the latest generated one.
- const handleGenerateBillingCodes = useCallback(async (noteToCode: string) => {
-    // No need to check noteToCode here as it's called internally after SOAP generation
-    // If called standalone in the future, add checks.
-    setIsGeneratingCodes(true);
-    setAgentState('generating_codes'); // Update agent state
-
-    try {
-      // Call AI flow to suggest billing codes
-      const result = await generateBillingCodes({ soapNote: noteToCode });
-      setBillingCodes(result.billingCodes);
-      toast({ title: 'Billing Codes Suggested', description: 'Codes are displayed below.' });
-    } catch (error) {
-      console.error('Error generating billing codes:', error);
-      toast({ title: 'Code Suggestion Failed', description: 'Could not suggest billing codes.', variant: 'destructive' });
-      setAgentState('error'); // Indicate error state
-       setTimeout(() => setAgentState('idle'), 2000);
+        setIsGeneratingCodes(false); // Also reset code loading state if SOAP fails
+        transitionAgentState('error'); // Set error state directly
     } finally {
-      // Reset all generation-related loading states and agent state
-      setIsGeneratingCodes(false);
-      setIsGeneratingSoap(false); // Reset SOAP loading state here as well
-      // Only reset to idle if no error occurred
-      if (agentState !== 'error') {
-        setAgentState('idle'); // Final step of documentation agent complete
-      }
+         // SOAP loading state reset on success handled by state transition, or on error in catch
+         // Final state handled by transitionAgentState logic in called function or catch block
     }
-  }, [toast, agentState]); // Added agentState dependency
+ }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState]); // Removed agentState dependency
 
 
   // Handler for saving the final note (EHR Agent)
@@ -238,23 +278,22 @@ export default function Home() {
       return;
     }
     setIsSavingNote(true);
-    setAgentState('saving'); // Update agent state
+    transitionAgentState('saving'); // Start saving state
     try {
       // Call EHR client to post the note
       await postNote(selectedPatient.id, finalNote);
       setSoapNote(finalNote); // Update the displayed note to the saved version
       toast({ title: 'Note Saved', description: 'SOAP note successfully submitted to EHR.' });
+      // Saving successful, transition to idle after minimum display time
+      transitionAgentState('saving', 'idle');
+
     } catch (error) {
       console.error('Error saving note:', error);
       toast({ title: 'Save Failed', description: 'Could not save the note to EHR.', variant: 'destructive' });
-       setAgentState('error'); // Indicate error state
-       setTimeout(() => setAgentState('idle'), 2000);
+       transitionAgentState('error'); // Set error state directly
     } finally {
       setIsSavingNote(false);
-      // Only reset to idle if no error occurred
-      if (agentState !== 'error') {
-         setAgentState('idle'); // Final step complete
-      }
+       // Final state handled by transitionAgentState logic
     }
   };
 
@@ -269,21 +308,20 @@ export default function Home() {
   // Effect to select the first patient initially or when the selected one is removed
   useEffect(() => {
     if (patients.length > 0 && !selectedPatient && !isFetchingData) {
-       // Check !isFetchingData to prevent re-triggering fetch during initial load race condition
       handleSelectPatient(patients[0].id);
     }
-    // Handle case where selected patient might be removed (e.g., future delete feature)
      if (selectedPatient && !patients.find(p => p.id === selectedPatient.id)) {
         if (patients.length > 0) {
           handleSelectPatient(patients[0].id);
         } else {
-          setSelectedPatient(null); // No patients left
+          setSelectedPatient(null);
         }
      }
   }, [patients, selectedPatient, handleSelectPatient, isFetchingData]);
 
-   // Determine if actions should be disabled based on agent states
-   const isActionDisabled = isFetchingData || isTranscribing || isGeneratingSoap || isGeneratingCodes || isSavingNote || !selectedPatient;
+   // Determine if actions should be disabled based on agent states or ongoing operations
+   const isActionDisabled = isFetchingData || isTranscribing || isGeneratingSoap || isGeneratingCodes || isSavingNote || isListening; // Added isListening
+   const isAgentBusy = agentState !== 'idle' && agentState !== 'error'; // Agent is visually busy
 
 
   return (
@@ -308,15 +346,17 @@ export default function Home() {
              onAudioBlob={handleAudioBlob} // Real-Time Listening Agent trigger
              isTranscribing={isTranscribing}
              transcriptValue={transcript}
-             disabled={!selectedPatient || isFetchingData || isGeneratingSoap || isGeneratingCodes || isSavingNote} // Disable during fetch and generation too
+             disabled={isActionDisabled || isAgentBusy} // Disable during actions OR if agent is busy
+             isListening={isListening}
+             setIsListening={setIsListening} // Pass setter down
            />
 
           {/* Button to trigger the Documentation Agent (SOAP + Codes) */}
-          {transcript && selectedPatient && !isFetchingData && (
+          {transcript && selectedPatient && ( // Removed !isFetchingData check, handled by isActionDisabled/isAgentBusy
              <div className="flex justify-end">
                <Button
                  onClick={handleGenerateSoapNote} // Starts Documentation Agent workflow
-                 disabled={isGeneratingSoap || isGeneratingCodes || isSavingNote || isTranscribing || !transcript || !patientHistory}
+                 disabled={isActionDisabled || isAgentBusy || !transcript || !patientHistory} // Disable if actions/agent busy, or no transcript/history
                >
                  {(isGeneratingSoap || isGeneratingCodes) ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
                  Generate SOAP & Codes
@@ -330,7 +370,7 @@ export default function Home() {
             isLoading={isGeneratingSoap} // Only show SOAP loading state here
             isSaving={isSavingNote}
             onSave={handleSaveNote} // Trigger EHR Agent
-            disabled={isActionDisabled} // Disable editing/saving based on overall state
+            disabled={isActionDisabled || isAgentBusy} // Disable editing/saving based on actions or busy agent
           />
 
           <BillingCodes
