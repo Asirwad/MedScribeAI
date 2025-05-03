@@ -8,21 +8,22 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarFooter,
-  SidebarTrigger,
+  SidebarTrigger, // Keep import for potential future use if needed, but mainly for mobile trigger logic
   SidebarInset,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarRail, // Import SidebarRail
+  SidebarRail,
   SidebarGroupContent,
+  useSidebar, // Import useSidebar hook
 } from '@/components/ui/sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Users, Settings, UserPlus } from 'lucide-react'; // Removed Home, FileText
+import { Users, Settings, UserPlus, PanelLeft } from 'lucide-react'; // Import PanelLeft for mobile trigger
 import type { Patient } from '@/services/ehr_client';
-import { ThemeToggle } from '@/components/theme-toggle'; // Import ThemeToggle
+import { ThemeToggle } from '@/components/theme-toggle';
 
 interface AppLayoutProps {
   patients: Patient[];
@@ -41,22 +42,18 @@ export function AppLayout({
 }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={true}>
+      {/* Desktop Sidebar Structure */}
       <Sidebar>
-        <SidebarRail /> {/* Add the rail component */}
+        <SidebarRail />
         <SidebarHeader className="p-4 flex justify-between items-center">
           <h1 className="text-xl font-semibold text-primary">MediScribeAI</h1>
-           <SidebarTrigger /> {/* Keep trigger for initial toggle/mobile */}
+           {/* Removed SidebarTrigger from here - moved to MobileHeader */}
         </SidebarHeader>
         <ScrollArea className="flex-1">
           <SidebarContent className="p-0">
             <SidebarGroup className="p-0">
                <SidebarGroupLabel className="px-4 flex justify-between items-center">
                  <span>Patients</span>
-                 {/* Add Patient Button integrated into label or separate button */}
-                 {/* Option 1: Button within Label */}
-                 {/* <Button variant="ghost" size="sm" onClick={onAddPatient} className="h-auto p-1">
-                   <UserPlus className="h-4 w-4" />
-                 </Button> */}
                </SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
@@ -82,7 +79,6 @@ export function AppLayout({
           </SidebarContent>
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col gap-2">
-          {/* Option 2: Add Patient button in Footer */}
            <Button variant="outline" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2" onClick={onAddPatient} aria-label='Add Patient'>
              <UserPlus /> <span className="group-data-[collapsible=icon]:hidden">Add Patient</span>
            </Button>
@@ -94,7 +90,46 @@ export function AppLayout({
           </div>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>{children}</SidebarInset>
+
+      {/* Main Content Area */}
+      <SidebarInset>
+         {/* Header for Mobile View with Trigger */}
+         <MobileHeader />
+         {/* The actual page content */}
+        {children}
+      </SidebarInset>
     </SidebarProvider>
+  );
+}
+
+
+// Separate component for mobile header to use the hook
+function MobileHeader() {
+  const { isMobile, toggleSidebar } = useSidebar();
+
+  if (!isMobile) {
+    return null; // Only render on mobile
+  }
+
+  return (
+     // Sticky header visible only on mobile (md:hidden)
+     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
+        {/* Mobile Sidebar Trigger */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8" // Consistent icon button size
+          onClick={toggleSidebar} // Use the hook's toggle function
+          aria-label="Toggle Sidebar"
+        >
+           <PanelLeft className="h-5 w-5" />
+        </Button>
+
+        {/* Optional: Mobile App Title/Logo */}
+         <h1 className="text-lg font-semibold text-primary">MediScribeAI</h1>
+
+        {/* Placeholder for other potential mobile header items */}
+         <div className="w-8"></div> {/* Spacer to balance the layout */}
+     </header>
   );
 }
