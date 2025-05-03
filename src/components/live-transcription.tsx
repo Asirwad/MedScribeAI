@@ -120,13 +120,13 @@ export function LiveTranscription({
   }
 
    const getPlaceholderText = () => {
-     if (isListening) return "Recording in progress... Click stop button to finish."; // Placeholder updated
+     if (isListening) return "Recording in progress... Use the overlay to stop."; // Updated placeholder
      if (isTranscribing) return "Processing audio transcript...";
      return "Start recording or manually enter/edit transcript here...";
    }
 
   // Determine if the button should be disabled for STARTING actions.
-  // Stopping should always be enabled if listening.
+  // Stopping is now handled in the overlay.
   const isStartDisabled = disabled || isListening || isTranscribing;
 
 
@@ -136,24 +136,20 @@ export function LiveTranscription({
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle>Live Transcription / Manual Entry</CardTitle>
           <Button
-            variant={isListening ? "destructive" : "outline"} // Change variant when listening
+            variant={"outline"} // Only start variant needed
             size="icon"
-            onClick={isListening ? stopRecording : startRecording}
+            onClick={startRecording} // Only starts recording
             // Disable starting if other actions are disabled or already listening/transcribing.
-            // NEVER disable stopping if already listening.
-            disabled={isListening ? false : isStartDisabled}
-            aria-label={isListening ? 'Stop Recording' : 'Start Recording'}
+            disabled={isStartDisabled}
+            aria-label={'Start Recording'}
             className={cn(
-              "relative overflow-visible", // Ensure ping animation isn't clipped
-              isListening ? "bg-red-500 hover:bg-red-600 text-white" : "" // Destructive styling
+              "relative overflow-visible" // Ensure ping animation isn't clipped
             )}
           >
-            {isListening ? (
-                <StopCircle className="h-5 w-5" /> // Use StopCircle when listening
-            ) : isTranscribing ? (
+             {isTranscribing ? (
                <Loader2 className="h-4 w-4 animate-spin" /> // Show loader only when transcribing (after stop)
             ) : (
-               <Mic className="text-primary h-5 w-5" /> // Show Mic when idle/not listening
+               <Mic className="text-primary h-5 w-5" /> // Show Mic when idle/not listening/not transcribing
             )}
           </Button>
         </CardHeader>
@@ -174,8 +170,12 @@ export function LiveTranscription({
           />
         </CardContent>
       </Card>
-       {/* Render the overlay */}
-      <RecordingOverlay isListening={isListening} startTime={recordingStartTime} />
+       {/* Render the overlay and pass the stopRecording function */}
+      <RecordingOverlay
+        isListening={isListening}
+        startTime={recordingStartTime}
+        onStopRecording={stopRecording} // Pass the stop function
+        />
     </>
   );
 }
