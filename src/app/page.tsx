@@ -7,7 +7,7 @@ import { PatientSummary } from '@/components/patient-summary';
 import { LiveTranscription } from '@/components/live-transcription';
 import { SOAPNote } from '@/components/soap-note';
 import { BillingCodes } from '@/components/billing-codes';
-import { getPatient, getObservations, getEncounters, postNote } from '@/services/ehr_client';
+import { getPatient, getObservations, getEncounters, postNote, createPatient } from '@/services/ehr_client';
 import type { Patient, Observation, Encounter } from '@/services/ehr_client';
 import { generateSoapNote } from '@/ai/flows/generate-soap-note';
 import { generateBillingCodes } from '@/ai/flows/generate-billing-codes';
@@ -15,16 +15,17 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Brain } from 'lucide-react';
+import { AddPatientForm } from '@/components/add-patient-form'; // Import the new component
 
-// Mock patient list for the sidebar
-const mockPatients: Patient[] = [
-  { id: '123', name: 'John Doe', dateOfBirth: '1970-01-01', gender: 'Male' },
-  { id: '456', name: 'Jane Smith', dateOfBirth: '1985-05-15', gender: 'Female' },
-  { id: '789', name: 'Robert Johnson', dateOfBirth: '1992-11-30', gender: 'Male' },
-];
+// Mock patient list for the sidebar - This will now be dynamic
+// const mockPatients: Patient[] = [
+//   { id: '123', name: 'John Doe', dateOfBirth: '1970-01-01', gender: 'Male' },
+//   { id: '456', name: 'Jane Smith', dateOfBirth: '1985-05-15', gender: 'Female' },
+//   { id: '789', name: 'Robert Johnson', dateOfBirth: '1992-11-30', gender: 'Male' },
+// ];
 
 export default function Home() {
-  const [patients] = useState<Patient[]>(mockPatients);
+  const [patients, setPatients] = useState<Patient[]>([]); // Start with an empty array
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
@@ -35,8 +36,21 @@ export default function Home() {
   const [isGeneratingCodes, setIsGeneratingCodes] = useState<boolean>(false);
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
   const [patientHistory, setPatientHistory] = useState<string>(''); // Store combined history
+  const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false); // State for dialog
 
   const { toast } = useToast();
+
+   // Load initial patients (could be from an API in a real app)
+   useEffect(() => {
+    // Simulate fetching initial patients
+    const initialPatients: Patient[] = [
+      { id: '123', name: 'John Doe', dateOfBirth: '1970-01-01', gender: 'Male' },
+      { id: '456', name: 'Jane Smith', dateOfBirth: '1985-05-15', gender: 'Female' },
+      { id: '789', name: 'Robert Johnson', dateOfBirth: '1992-11-30', gender: 'Male' },
+    ];
+    setPatients(initialPatients);
+  }, []);
+
 
   const fetchPatientData = useCallback(async (patientId: string) => {
     try {
@@ -162,11 +176,26 @@ export default function Home() {
     }
   };
 
-  // Select the first patient by default on initial load
+  const handlePatientAdded = (newPatient: Patient) => {
+    setPatients(prevPatients => [...prevPatients, newPatient]);
+    // Optionally select the newly added patient
+    handleSelectPatient(newPatient.id);
+  };
+
+
+  // Select the first patient by default on initial load if patients exist
   useEffect(() => {
     if (patients.length > 0 && !selectedPatient) {
       handleSelectPatient(patients[0].id);
     }
+     // If the selected patient is removed (e.g., in a real app), select the first available one
+     if (selectedPatient && !patients.find(p => p.id === selectedPatient.id)) {
+        if (patients.length > 0) {
+          handleSelectPatient(patients[0].id);
+        } else {
+          setSelectedPatient(null); // No patients left
+        }
+     }
   }, [patients, selectedPatient, handleSelectPatient]);
 
    // Determine if actions should be disabled
@@ -174,10 +203,12 @@ export default function Home() {
 
 
   return (
+    <>
     <AppLayout
       patients={patients}
       selectedPatient={selectedPatient}
       onSelectPatient={handleSelectPatient}
+      onAddPatient={() => setIsAddPatientDialogOpen(true)} // Add prop to open dialog
     >
       <ScrollArea className="h-full flex-1 p-4 md:p-6">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -220,6 +251,12 @@ export default function Home() {
         </div>
       </ScrollArea>
     </AppLayout>
+     <AddPatientForm
+       isOpen={isAddPatientDialogOpen}
+       onOpenChange={setIsAddPatientDialogOpen}
+       onPatientAdded={handlePatientAdded}
+     />
+     </>
   );
 }
 

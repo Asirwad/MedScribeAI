@@ -179,6 +179,27 @@ export async function postNote(patientId: string, noteContent: string): Promise<
   // In a real scenario, you might return the ID of the newly created note or confirm success.
 }
 
+/**
+ * Asynchronously creates a new patient in the EHR simulation.
+ *
+ * @param patientData Data for the new patient (name, DOB, gender).
+ * @returns A promise that resolves to the newly created Patient object.
+ */
+export async function createPatient(patientData: Omit<Patient, 'id'>): Promise<Patient> {
+  await delay(400); // Simulate network latency
+  const newId = `pat_${Math.random().toString(36).substring(2, 9)}`;
+  const newPatient: Patient = { ...patientData, id: newId };
+
+  // Add to all mock stores
+  mockPatientsStore[newId] = newPatient;
+  mockObservationsStore[newId] = [];
+  mockEncountersStore[newId] = [];
+  mockNotesStore[newId] = [];
+
+  console.log(`[EHR Client] Created new patient: ${newId} - ${newPatient.name}`);
+  return newPatient;
+}
+
 // Example of how you might add a new patient (not used in the app currently, but shows pattern)
 // export async function createPatient(patientData: Omit<Patient, 'id'>): Promise<Patient> {
 //   await delay(400);
