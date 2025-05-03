@@ -4,44 +4,67 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+// Define the structure of a single billing code entry
+export interface BillingCodeEntry {
+  code: string;
+  description: string;
+  estimatedBillAmountRange: string;
+}
 
 interface BillingCodesProps {
-  codes: string;
+  codes: BillingCodeEntry[]; // Expect an array of BillingCodeEntry objects
   isLoading: boolean;
 }
 
 export function BillingCodes({ codes, isLoading }: BillingCodesProps) {
 
-  // Simple parsing assuming comma-separated codes
-  const parseCodes = (codeString: string): string[] => {
-    if (!codeString) return [];
-    return codeString.split(',').map(code => code.trim()).filter(code => code.length > 0);
-  };
-
-  const parsedCodes = parseCodes(codes);
-
   const renderContent = () => {
      if (isLoading) {
       return (
-        <div className="flex flex-wrap gap-2">
-           <Skeleton className="h-6 w-20 rounded-full" />
-           <Skeleton className="h-6 w-24 rounded-full" />
-           <Skeleton className="h-6 w-16 rounded-full" />
+        <div className="space-y-2">
+           <Skeleton className="h-8 w-full rounded-md" />
+           <Skeleton className="h-8 w-full rounded-md" />
+           <Skeleton className="h-8 w-full rounded-md" />
         </div>
       );
     }
 
-    if (!codes || parsedCodes.length === 0) {
+    // Check if codes is an array and has items
+    if (!Array.isArray(codes) || codes.length === 0) {
       return <p className="text-muted-foreground text-sm">No billing codes suggested yet.</p>;
     }
 
     return (
-        <div className="flex flex-wrap gap-2">
-            {parsedCodes.map((code, index) => (
-                 <Badge key={index} variant="secondary">{code}</Badge>
-            ))}
-        </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">Code</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead className="text-right w-[200px]">Est. Bill Amount</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {codes.map((entry, index) => (
+            <TableRow key={index}>
+              <TableCell className="font-medium">{entry.code}</TableCell>
+              <TableCell>{entry.description}</TableCell>
+              <TableCell className="text-right">{entry.estimatedBillAmountRange}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+         {/* Optional: Add a caption if needed */}
+         {/* <TableCaption>Suggested billing codes based on the SOAP note.</TableCaption> */}
+      </Table>
     );
   };
 

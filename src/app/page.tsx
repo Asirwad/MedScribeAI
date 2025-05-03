@@ -6,14 +6,13 @@ import { AppLayout } from '@/components/app-layout';
 import { PatientSummary } from '@/components/patient-summary';
 import { LiveTranscription } from '@/components/live-transcription';
 import { SOAPNote } from '@/components/soap-note';
-import { BillingCodes } from '@/components/billing-codes';
+import { BillingCodes, BillingCodeEntry } from '@/components/billing-codes'; // Import BillingCodeEntry type
 import { getPatient, getObservations, getEncounters, postNote, createPatient } from '@/services/ehr_client';
 import type { Patient, Observation, Encounter } from '@/services/ehr_client';
 import { generateSoapNote } from '@/ai/flows/generate-soap-note';
 import { generateBillingCodes } from '@/ai/flows/generate-billing-codes';
 import { transcribePatientEncounter } from '@/ai/flows/transcribe-patient-encounter'; // Import transcription flow
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Keep import if needed elsewhere, but removed wrapper
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Brain } from 'lucide-react'; // Removed Mic icons, handled in LiveTranscription
 import { AddPatientForm } from '@/components/add-patient-form';
@@ -29,7 +28,7 @@ export default function Home() {
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [transcript, setTranscript] = useState<string>('');
   const [soapNote, setSoapNote] = useState<string>('');
-  const [billingCodes, setBillingCodes] = useState<string>('');
+  const [billingCodes, setBillingCodes] = useState<BillingCodeEntry[]>([]); // Initialize as empty array
   const [isGeneratingSoap, setIsGeneratingSoap] = useState<boolean>(false);
   const [isGeneratingCodes, setIsGeneratingCodes] = useState<boolean>(false);
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
@@ -95,7 +94,7 @@ export default function Home() {
       // Reset state for the new patient
       setTranscript('');
       setSoapNote('');
-      setBillingCodes('');
+      setBillingCodes([]); // Reset billing codes to empty array
       setIsGeneratingSoap(false);
       setIsGeneratingCodes(false);
       setIsSavingNote(false);
@@ -156,7 +155,7 @@ export default function Home() {
   const handleManualTranscriptChange = useCallback((newTranscript: string) => {
     setTranscript(newTranscript);
     setSoapNote(''); // Reset downstream outputs if transcript changes manually
-    setBillingCodes('');
+    setBillingCodes([]); // Reset billing codes to empty array
     // No agent transition needed for manual changes unless we want to explicitly show 'idle'
   }, []);
 
@@ -224,7 +223,8 @@ export default function Home() {
     try {
       // Call AI flow to suggest billing codes
       const result = await generateBillingCodes({ soapNote: noteToCode });
-      setBillingCodes(result.billingCodes);
+      // Ensure result.billingCodes is an array, default to empty array if not
+      setBillingCodes(Array.isArray(result.billingCodes) ? result.billingCodes : []);
       toast({ title: 'Billing Codes Suggested', description: 'Codes are displayed below.' });
       // Code generation successful, transition to idle after minimum display time for 'generating_codes' state
       transitionAgentState('generating_codes', 'idle');
@@ -249,7 +249,7 @@ export default function Home() {
     }
     setIsGeneratingSoap(true);
     setSoapNote(''); // Clear previous note
-    setBillingCodes(''); // Clear previous codes
+    setBillingCodes([]); // Clear previous codes (as an array)
     transitionAgentState('generating_soap', 'generating_codes'); // Plan to transition to 'generating_codes' next
 
     try {
@@ -275,8 +275,7 @@ export default function Home() {
         transitionAgentState('error'); // Set error state directly
     } finally {
         // Ensure loading state is reset in finally block as well
-        // We don't reset it here necessarily as it should transition visually via handleGenerateBillingCodes
-        // setIsGeneratingSoap(false); // Let handleGenerateBillingCodes handle the final state transitions
+        setIsGeneratingSoap(false); // Reset SOAP generation loading state
         // Code generation loading state is handled by handleGenerateBillingCodes finally block
     }
  }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState]); // Removed agentState dependency
@@ -344,10 +343,10 @@ export default function Home() {
       onSelectPatient={handleSelectPatient}
       onAddPatient={() => setIsAddPatientDialogOpen(true)}
     >
-        {/* Main content container, remove ScrollArea wrapper */}
+        {/* Main content container */}
         {/* Add padding-bottom to create space at the bottom */}
-        <div className="flex-1 p-4 md:p-6 relative pb-24"> {/* Increased padding-bottom */}
-            <div className="max-w-4xl mx-auto space-y-6"> {/* Removed pb-16 here */}
+        <div className="flex-1 p-4 md:p-6 relative pb-24 overflow-auto"> {/* Added overflow-auto */}
+            <div className="max-w-4xl mx-auto space-y-6">
             <PatientSummary
                 patient={selectedPatient}
                 observations={observations}
@@ -391,7 +390,7 @@ export default function Home() {
             />
 
             <BillingCodes
-                codes={billingCodes}
+                codes={billingCodes} // Pass the array of code objects
                 isLoading={isGeneratingCodes} // Show loading state specifically for codes
             />
             </div>

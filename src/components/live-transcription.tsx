@@ -51,7 +51,7 @@ export function LiveTranscription({
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Ensure correct type
         if (audioBlob.size > 0) {
-           toast({ title: "Recording Stopped", description: "Processing audio..." });
+          //  toast({ title: "Recording Stopped", description: "Processing audio..." });
            onAudioBlob(audioBlob); // Send blob to parent
         } else {
             toast({ title: "Recording Stopped", description: "No audio data captured.", variant: "default" }); // Use default variant
@@ -66,7 +66,7 @@ export function LiveTranscription({
       mediaRecorderRef.current.start();
       setIsListening(true); // Update parent state
       setRecordingStartTime(new Date()); // Set start time
-      toast({ title: "Recording Started", description: "Microphone is active." });
+      // toast({ title: "Recording Started", description: "Microphone is active." });
 
     } catch (err) {
       console.error('Error accessing microphone:', err);
