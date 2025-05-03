@@ -11,21 +11,16 @@ import { getPatient, getObservations, getEncounters, postNote, createPatient } f
 import type { Patient, Observation, Encounter } from '@/services/ehr_client';
 import { generateSoapNote } from '@/ai/flows/generate-soap-note';
 import { generateBillingCodes } from '@/ai/flows/generate-billing-codes';
+import { transcribePatientEncounter } from '@/ai/flows/transcribe-patient-encounter'; // Import transcription flow
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Brain } from 'lucide-react';
-import { AddPatientForm } from '@/components/add-patient-form'; // Import the new component
-
-// Mock patient list for the sidebar - This will now be dynamic
-// const mockPatients: Patient[] = [
-//   { id: '123', name: 'John Doe', dateOfBirth: '1970-01-01', gender: 'Male' },
-//   { id: '456', name: 'Jane Smith', dateOfBirth: '1985-05-15', gender: 'Female' },
-//   { id: '789', name: 'Robert Johnson', dateOfBirth: '1992-11-30', gender: 'Male' },
-// ];
+import { AddPatientForm } from '@/components/add-patient-form';
+import { AgentVisualizationOverlay, AgentState } from '@/components/agent-visualization-overlay'; // Import visualization overlay
 
 export default function Home() {
-  const [patients, setPatients] = useState<Patient[]>([]); // Start with an empty array
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [observations, setObservations] = useState<Observation[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
@@ -35,14 +30,15 @@ export default function Home() {
   const [isGeneratingSoap, setIsGeneratingSoap] = useState<boolean>(false);
   const [isGeneratingCodes, setIsGeneratingCodes] = useState<boolean>(false);
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
-  const [patientHistory, setPatientHistory] = useState<string>(''); // Store combined history
-  const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false); // State for dialog
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false); // Add transcribing state
+  const [patientHistory, setPatientHistory] = useState<string>('');
+  const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
+  const [agentState, setAgentState] = useState<AgentState>('idle'); // State for visualization overlay
 
   const { toast } = useToast();
 
-   // Load initial patients (could be from an API in a real app)
+   // Load initial patients
    useEffect(() => {
-    // Simulate fetching initial patients
     const initialPatients: Patient[] = [
       { id: '123', name: 'John Doe', dateOfBirth: '1970-01-01', gender: 'Male' },
       { id: '456', name: 'Jane Smith', dateOfBirth: '1985-05-15', gender: 'Female' },
@@ -54,14 +50,15 @@ export default function Home() {
 
   const fetchPatientData = useCallback(async (patientId: string) => {
     try {
-      // Reset state for new patient
       setTranscript('');
       setSoapNote('');
       setBillingCodes('');
       setIsGeneratingSoap(false);
       setIsGeneratingCodes(false);
       setIsSavingNote(false);
+      setIsTranscribing(false); // Reset transcribing state
       setPatientHistory('');
+      setAgentState('idle'); // Reset agent state
 
       const [patientData, obsData, encData] = await Promise.all([
         getPatient(patientId),
@@ -73,11 +70,10 @@ export default function Home() {
       setObservations(obsData);
       setEncounters(encData);
 
-      // Create a simple patient history string
        const history = `
         Patient: ${patientData.name}, DOB: ${patientData.dateOfBirth}, Gender: ${patientData.gender}
-        Observations: ${obsData.map(o => `${o.code}: ${o.value} ${o.units || ''} (${new Date(o.date).toLocaleDateString()})`).join(', ')}
-        Encounters: ${encData.map(e => `${new Date(e.startDate).toLocaleDateString()}: ${e.class} - ${e.reason || 'N/A'}`).join(', ')}
+        Recent Observations: ${obsData.slice(0, 3).map(o => `${o.code}: ${o.value} ${o.units || ''} (${new Date(o.date).toLocaleDateString()})`).join('; ') || 'None'}
+        Recent Encounters: ${encData.slice(0, 3).map(e => `${new Date(e.startDate).toLocaleDateString()}: ${e.class} - ${e.reason || 'N/A'}`).join('; ') || 'None'}
       `.trim();
       setPatientHistory(history);
 
@@ -88,7 +84,7 @@ export default function Home() {
         description: 'Could not load patient details.',
         variant: 'destructive',
       });
-      setSelectedPatient(null); // Reset selection on error
+      setSelectedPatient(null);
       setObservations([]);
       setEncounters([]);
     }
@@ -102,12 +98,55 @@ export default function Home() {
     }
   };
 
-  const handleTranscriptUpdate = useCallback((newTranscript: string) => {
+  // Renamed from handleTranscriptUpdate to avoid confusion
+  const handleManualTranscriptChange = useCallback((newTranscript: string) => {
     setTranscript(newTranscript);
-    // Reset downstream results when transcript changes
     setSoapNote('');
     setBillingCodes('');
+     setAgentState('idle'); // Manual change stops agent visualization
   }, []);
+
+  // New handler for transcription results from the agent
+  const handleTranscriptionResult = useCallback((newTranscriptChunk: string) => {
+    const updatedTranscript = transcript ? `${transcript}\n${newTranscriptChunk}` : newTranscriptChunk;
+    setTranscript(updatedTranscript);
+    setSoapNote(''); // Reset downstream
+    setBillingCodes('');
+    // No toast here, as LiveTranscription component handles its own feedback
+  }, [transcript]);
+
+
+ // Handler for processing audio blob
+ const handleAudioBlob = useCallback(async (audioBlob: Blob) => {
+    if (!selectedPatient) return; // Should not happen if button is disabled
+
+    setIsTranscribing(true);
+    setAgentState('transcribing'); // Update agent state
+    let base64Audio: string | null = null;
+
+    try {
+      // Convert Blob to base64 Data URI
+      const reader = new FileReader();
+      const readPromise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(audioBlob);
+      });
+      base64Audio = await readPromise;
+
+      // Call AI flow for transcription
+      const result = await transcribePatientEncounter({ audioDataUri: base64Audio });
+      handleTranscriptionResult(result.transcript);
+      toast({ title: "Transcription Complete", description: "Audio processed successfully." });
+
+    } catch (error) {
+      console.error("Transcription failed:", error);
+      toast({ title: "Transcription Error", description: "Failed to transcribe audio.", variant: "destructive" });
+    } finally {
+      setIsTranscribing(false);
+      setAgentState('idle'); // Reset agent state on completion or error
+    }
+ }, [selectedPatient, handleTranscriptionResult, toast]);
 
 
  const handleGenerateSoapNote = useCallback(async () => {
@@ -116,8 +155,9 @@ export default function Home() {
         return;
     }
     setIsGeneratingSoap(true);
-    setSoapNote(''); // Clear previous note
-    setBillingCodes(''); // Clear previous codes
+    setAgentState('generating_soap'); // Update agent state
+    setSoapNote('');
+    setBillingCodes('');
     try {
         const result = await generateSoapNote({
             patientId: selectedPatient.id,
@@ -126,24 +166,27 @@ export default function Home() {
         });
         setSoapNote(result.soapNote);
         toast({ title: 'SOAP Note Generated', description: 'Review and edit the note below.' });
-        // Automatically trigger billing code generation after SOAP note
-        handleGenerateBillingCodes(result.soapNote);
+        // Trigger billing code generation AFTER SOAP note is set
+        handleGenerateBillingCodes(result.soapNote); // Pass the generated note
     } catch (error) {
         console.error('Error generating SOAP note:', error);
         toast({ title: 'Generation Failed', description: 'Could not generate SOAP note.', variant: 'destructive' });
-    } finally {
-        setIsGeneratingSoap(false);
+        setAgentState('idle'); // Reset on error
+        setIsGeneratingSoap(false); // Ensure loading state is reset on error
     }
- }, [selectedPatient, transcript, patientHistory, toast]);
+    // Note:setIsGeneratingSoap(false) is NOT called here, because handleGenerateBillingCodes will handle the final state update
+ }, [selectedPatient, transcript, patientHistory, toast, handleTranscriptionResult /* Add handleGenerateBillingCodes dependency */]);
 
 
  const handleGenerateBillingCodes = useCallback(async (noteToCode: string) => {
     if (!noteToCode) {
-      // No need to show a toast here, just skip if no note
+      setAgentState('idle'); // Nothing to code, reset state
+      setIsGeneratingSoap(false); // Reset SOAP loading state as well
       return;
     }
     setIsGeneratingCodes(true);
-    setBillingCodes(''); // Clear previous codes
+    setAgentState('generating_codes'); // Update agent state
+    setBillingCodes('');
     try {
       const result = await generateBillingCodes({ soapNote: noteToCode });
       setBillingCodes(result.billingCodes);
@@ -153,6 +196,8 @@ export default function Home() {
       toast({ title: 'Code Suggestion Failed', description: 'Could not suggest billing codes.', variant: 'destructive' });
     } finally {
       setIsGeneratingCodes(false);
+      setIsGeneratingSoap(false); // Also reset SOAP loading state here
+      setAgentState('idle'); // Reset agent state after codes (or error)
     }
   }, [toast]);
 
@@ -163,43 +208,40 @@ export default function Home() {
       return;
     }
     setIsSavingNote(true);
+     setAgentState('saving'); // Optionally add a 'saving' state visualization
     try {
       await postNote(selectedPatient.id, finalNote);
-      setSoapNote(finalNote); // Update state with the saved version
+      setSoapNote(finalNote);
       toast({ title: 'Note Saved', description: 'SOAP note successfully submitted to EHR.' });
-       // Optionally re-fetch data or update UI state after saving
     } catch (error) {
       console.error('Error saving note:', error);
       toast({ title: 'Save Failed', description: 'Could not save the note to EHR.', variant: 'destructive' });
     } finally {
       setIsSavingNote(false);
+       setAgentState('idle'); // Reset agent state
     }
   };
 
   const handlePatientAdded = (newPatient: Patient) => {
     setPatients(prevPatients => [...prevPatients, newPatient]);
-    // Optionally select the newly added patient
     handleSelectPatient(newPatient.id);
   };
 
 
-  // Select the first patient by default on initial load if patients exist
   useEffect(() => {
     if (patients.length > 0 && !selectedPatient) {
       handleSelectPatient(patients[0].id);
     }
-     // If the selected patient is removed (e.g., in a real app), select the first available one
      if (selectedPatient && !patients.find(p => p.id === selectedPatient.id)) {
         if (patients.length > 0) {
           handleSelectPatient(patients[0].id);
         } else {
-          setSelectedPatient(null); // No patients left
+          setSelectedPatient(null);
         }
      }
   }, [patients, selectedPatient, handleSelectPatient]);
 
-   // Determine if actions should be disabled
-   const isActionDisabled = !selectedPatient || isGeneratingSoap || isSavingNote;
+   const isActionDisabled = !selectedPatient || isGeneratingSoap || isSavingNote || isTranscribing;
 
 
   return (
@@ -208,9 +250,9 @@ export default function Home() {
       patients={patients}
       selectedPatient={selectedPatient}
       onSelectPatient={handleSelectPatient}
-      onAddPatient={() => setIsAddPatientDialogOpen(true)} // Add prop to open dialog
+      onAddPatient={() => setIsAddPatientDialogOpen(true)}
     >
-      <ScrollArea className="h-full flex-1 p-4 md:p-6">
+      <ScrollArea className="h-full flex-1 p-4 md:p-6 relative"> {/* Added relative positioning */}
         <div className="max-w-4xl mx-auto space-y-6">
           <PatientSummary
             patient={selectedPatient}
@@ -219,15 +261,20 @@ export default function Home() {
           />
 
           <LiveTranscription
-             onTranscriptUpdate={handleTranscriptUpdate}
-             disabled={!selectedPatient} // Disable if no patient selected
+             // Use the new handler for manual changes
+             onManualTranscriptChange={handleManualTranscriptChange}
+             // Use the new handler for audio blobs
+             onAudioBlob={handleAudioBlob}
+             isTranscribing={isTranscribing} // Pass transcribing state
+             transcriptValue={transcript} // Pass current transcript value
+             disabled={!selectedPatient}
            />
 
           {transcript && selectedPatient && (
              <div className="flex justify-end">
                <Button
                  onClick={handleGenerateSoapNote}
-                 disabled={isGeneratingSoap || !transcript}
+                 disabled={isGeneratingSoap || isTranscribing || !transcript || !patientHistory}
                >
                  {isGeneratingSoap ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
                  Generate SOAP & Codes
@@ -249,6 +296,8 @@ export default function Home() {
              isLoading={isGeneratingCodes}
            />
         </div>
+         {/* Agent Visualization Overlay */}
+         <AgentVisualizationOverlay agentState={agentState} />
       </ScrollArea>
     </AppLayout>
      <AddPatientForm
@@ -259,4 +308,3 @@ export default function Home() {
      </>
   );
 }
-
