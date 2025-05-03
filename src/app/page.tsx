@@ -252,6 +252,7 @@ export default function Home() {
         });
 
         setSoapNote(result.soapNote);
+        setIsGeneratingSoap(false); // <<< FIX: Set loading to false after getting result
         toast({ title: 'SOAP Note Generated', description: 'Review and edit the note below. Generating codes...' });
 
         // Chain to billing code generation ONLY after successful SOAP generation
@@ -264,9 +265,6 @@ export default function Home() {
         setIsGeneratingSoap(false); // Ensure loading state is reset on error
         setIsGeneratingCodes(false); // Also reset code loading state if SOAP fails
         transitionAgentState('error'); // Set error state directly
-    } finally {
-         // SOAP loading state reset on success handled by state transition, or on error in catch
-         // Final state handled by transitionAgentState logic in called function or catch block
     }
  }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState]); // Removed agentState dependency
 
