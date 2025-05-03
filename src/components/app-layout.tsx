@@ -15,6 +15,7 @@ import {
   SidebarMenuButton,
   SidebarGroup,
   SidebarGroupLabel,
+  SidebarRail, // Import SidebarRail
   SidebarGroupContent,
 } from '@/components/ui/sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -40,9 +41,10 @@ export function AppLayout({
   return (
     <SidebarProvider defaultOpen={true}>
       <Sidebar>
+        <SidebarRail /> {/* Add the rail component */}
         <SidebarHeader className="p-4 flex justify-between items-center">
           <h1 className="text-xl font-semibold text-primary">MediScribeAI</h1>
-           <SidebarTrigger /> {/* Keep trigger if needed */}
+           <SidebarTrigger /> {/* Keep trigger for initial toggle/mobile */}
         </SidebarHeader>
         <ScrollArea className="flex-1">
           <SidebarContent className="p-0">
@@ -66,8 +68,9 @@ export function AppLayout({
                         className="justify-start"
                         isActive={selectedPatient?.id === patient.id}
                         onClick={() => onSelectPatient(patient.id)}
+                        tooltip={patient.name} // Add tooltip for collapsed state
                       >
-                        <Users className="h-4 w-4" /> {/* Adjusted icon size */}
+                        <Users /> {/* Keep icon */}
                         <span>{patient.name}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -79,11 +82,11 @@ export function AppLayout({
         </ScrollArea>
         <SidebarFooter className="p-4 border-t border-sidebar-border flex flex-col gap-2">
           {/* Option 2: Add Patient button in Footer */}
-           <Button variant="outline" className="w-full justify-start gap-2" onClick={onAddPatient}>
-             <UserPlus /> Add Patient
+           <Button variant="outline" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2" onClick={onAddPatient} aria-label='Add Patient'>
+             <UserPlus /> <span className="group-data-[collapsible=icon]:hidden">Add Patient</span>
            </Button>
-          <Button variant="ghost" className="w-full justify-start gap-2">
-            <Settings /> Settings
+          <Button variant="ghost" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2" aria-label='Settings'>
+            <Settings /> <span className="group-data-[collapsible=icon]:hidden">Settings</span>
           </Button>
         </SidebarFooter>
       </Sidebar>
