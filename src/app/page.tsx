@@ -13,7 +13,7 @@ import { generateSoapNote } from '@/ai/flows/generate-soap-note';
 import { generateBillingCodes } from '@/ai/flows/generate-billing-codes';
 import { transcribePatientEncounter } from '@/ai/flows/transcribe-patient-encounter'; // Import transcription flow
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Keep import if needed elsewhere, but removed wrapper
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Brain } from 'lucide-react'; // Removed Mic icons, handled in LiveTranscription
 import { AddPatientForm } from '@/components/add-patient-form';
@@ -342,58 +342,59 @@ export default function Home() {
       onSelectPatient={handleSelectPatient}
       onAddPatient={() => setIsAddPatientDialogOpen(true)}
     >
-      <ScrollArea className="h-full flex-1 p-4 md:p-6 relative"> {/* Added relative positioning */}
-        <div className="max-w-4xl mx-auto space-y-6 pb-16"> {/* Added padding-bottom */}
-          <PatientSummary
-            patient={selectedPatient}
-            observations={observations}
-            encounters={encounters}
-            isLoading={isFetchingData} // Pass loading state
-          />
+        {/* Main content container, remove ScrollArea wrapper */}
+        <div className="flex-1 p-4 md:p-6 relative"> {/* Added relative */}
+            <div className="max-w-4xl mx-auto space-y-6 pb-16"> {/* Added padding-bottom */}
+            <PatientSummary
+                patient={selectedPatient}
+                observations={observations}
+                encounters={encounters}
+                isLoading={isFetchingData} // Pass loading state
+            />
 
-          <LiveTranscription
-             onManualTranscriptChange={handleManualTranscriptChange}
-             onAudioBlob={handleAudioBlob} // Real-Time Listening Agent trigger
-             isTranscribing={isTranscribing}
-             transcriptValue={transcript}
-             disabled={isActionDisabled} // Pass general disabled state (LiveTranscription handles its own logic for stop btn)
-             isListening={isListening}
-             setIsListening={setIsListening} // Pass state and setter down
-           />
+            <LiveTranscription
+                onManualTranscriptChange={handleManualTranscriptChange}
+                onAudioBlob={handleAudioBlob} // Real-Time Listening Agent trigger
+                isTranscribing={isTranscribing}
+                transcriptValue={transcript}
+                disabled={isActionDisabled} // Pass general disabled state (LiveTranscription handles its own logic for stop btn)
+                isListening={isListening}
+                setIsListening={setIsListening} // Pass state and setter down
+            />
 
-          {/* Button to trigger the Documentation Agent (SOAP + Codes) */}
-          {/* Show button if there's a transcript, a patient, and NOT currently listening */}
-          {transcript && selectedPatient && !isListening && (
-             <div className="flex justify-end">
-               <Button
-                 onClick={handleGenerateSoapNote} // Starts Documentation Agent workflow
-                 // Disable if other actions/agent busy, or no transcript/history, or currently listening
-                 disabled={isActionDisabled || isAgentBusy || !transcript || !patientHistory}
-               >
-                 {isGeneratingSoap || isGeneratingCodes ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
-                 Generate SOAP & Codes
-               </Button>
-             </div>
-           )}
+            {/* Button to trigger the Documentation Agent (SOAP + Codes) */}
+            {/* Show button if there's a transcript, a patient, and NOT currently listening */}
+            {transcript && selectedPatient && !isListening && (
+                <div className="flex justify-end">
+                <Button
+                    onClick={handleGenerateSoapNote} // Starts Documentation Agent workflow
+                    // Disable if other actions/agent busy, or no transcript/history, or currently listening
+                    disabled={isActionDisabled || isAgentBusy || !transcript || !patientHistory}
+                >
+                    {isGeneratingSoap || isGeneratingCodes ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
+                    Generate SOAP & Codes
+                </Button>
+                </div>
+            )}
 
 
-          <SOAPNote
-            initialNote={soapNote}
-            isLoading={isGeneratingSoap} // Only show SOAP loading state here
-            isSaving={isSavingNote}
-            onSave={handleSaveNote} // Trigger EHR Agent
-            // Disable editing/saving based on actions or busy agent or if listening
-            disabled={isActionDisabled || isAgentBusy || isListening}
-          />
+            <SOAPNote
+                initialNote={soapNote}
+                isLoading={isGeneratingSoap} // Only show SOAP loading state here
+                isSaving={isSavingNote}
+                onSave={handleSaveNote} // Trigger EHR Agent
+                // Disable editing/saving based on actions or busy agent or if listening
+                disabled={isActionDisabled || isAgentBusy || isListening}
+            />
 
-          <BillingCodes
-             codes={billingCodes}
-             isLoading={isGeneratingCodes} // Show loading state specifically for codes
-           />
+            <BillingCodes
+                codes={billingCodes}
+                isLoading={isGeneratingCodes} // Show loading state specifically for codes
+            />
+            </div>
+            {/* Agent Visualization Overlay - Pass the current agent state */}
+            <AgentVisualizationOverlay agentState={agentState} />
         </div>
-         {/* Agent Visualization Overlay - Pass the current agent state */}
-         <AgentVisualizationOverlay agentState={agentState} />
-      </ScrollArea>
     </AppLayout>
      {/* Dialog for adding new patients */}
      <AddPatientForm

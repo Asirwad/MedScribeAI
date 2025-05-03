@@ -92,13 +92,21 @@ export function AppLayout({
         </SidebarFooter>
       </Sidebar>
 
-      {/* Main Content Area */}
-      <SidebarInset>
+      {/* Main Content Area wrapper */}
+      <div className="flex flex-col flex-1 min-h-svh">
          {/* Header for Mobile View with Trigger */}
          <MobileHeader />
-         {/* The actual page content */}
-        {children}
-      </SidebarInset>
+
+         {/* Ensure SidebarInset takes remaining space and allows scrolling */}
+         {/* SidebarInset now just provides styling context */}
+         <SidebarInset className="flex-1 overflow-hidden"> {/* flex-1 to take remaining vertical space */}
+             {/* The actual page content - ScrollArea handles the scrolling */}
+             {/* Removed h-full from ScrollArea to let SidebarInset control height */}
+             <ScrollArea className="flex-1"> {/* flex-1 ensures it tries to fill */}
+                {children}
+             </ScrollArea>
+         </SidebarInset>
+      </div>
     </SidebarProvider>
   );
 }
@@ -116,7 +124,7 @@ function MobileHeader() {
      // Sticky header visible only on mobile (md:hidden), positioned at the top
      <header className={cn(
          "sticky top-0 z-40", // Make header sticky, z-index below overlays
-         "flex h-14 items-center justify-between",
+         "flex h-14 items-center justify-between shrink-0", // Fixed height, prevent shrinking
          "border-b bg-background px-4", // Styling
          "md:hidden" // Hide on medium screens and up
         )}>
