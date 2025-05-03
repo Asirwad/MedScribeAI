@@ -93,18 +93,15 @@ export function AppLayout({
       </Sidebar>
 
       {/* Main Content Area wrapper */}
-      <div className="flex flex-col flex-1 min-h-svh">
+      <div className="flex flex-col flex-1 min-h-svh overflow-hidden"> {/* Added overflow-hidden */}
          {/* Header for Mobile View with Trigger */}
          <MobileHeader />
 
          {/* Ensure SidebarInset takes remaining space and allows scrolling */}
          {/* SidebarInset now just provides styling context */}
-         <SidebarInset className="flex-1 overflow-hidden"> {/* flex-1 to take remaining vertical space */}
-             {/* The actual page content - ScrollArea handles the scrolling */}
-             {/* Removed h-full from ScrollArea to let SidebarInset control height */}
-             <ScrollArea className="flex-1"> {/* flex-1 ensures it tries to fill */}
-                {children}
-             </ScrollArea>
+         <SidebarInset className="flex-1 overflow-auto"> {/* Changed to overflow-auto */}
+             {/* The actual page content */}
+             {children}
          </SidebarInset>
       </div>
     </SidebarProvider>

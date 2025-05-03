@@ -274,7 +274,9 @@ export default function Home() {
         setIsGeneratingCodes(false); // Also reset code loading state if SOAP fails
         transitionAgentState('error'); // Set error state directly
     } finally {
-        setIsGeneratingSoap(false); // Ensure loading state is reset in finally block as well
+        // Ensure loading state is reset in finally block as well
+        // We don't reset it here necessarily as it should transition visually via handleGenerateBillingCodes
+        // setIsGeneratingSoap(false); // Let handleGenerateBillingCodes handle the final state transitions
         // Code generation loading state is handled by handleGenerateBillingCodes finally block
     }
  }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState]); // Removed agentState dependency
@@ -343,8 +345,9 @@ export default function Home() {
       onAddPatient={() => setIsAddPatientDialogOpen(true)}
     >
         {/* Main content container, remove ScrollArea wrapper */}
-        <div className="flex-1 p-4 md:p-6 relative"> {/* Added relative */}
-            <div className="max-w-4xl mx-auto space-y-6 pb-16"> {/* Added padding-bottom */}
+        {/* Add padding-bottom to create space at the bottom */}
+        <div className="flex-1 p-4 md:p-6 relative pb-24"> {/* Increased padding-bottom */}
+            <div className="max-w-4xl mx-auto space-y-6"> {/* Removed pb-16 here */}
             <PatientSummary
                 patient={selectedPatient}
                 observations={observations}
@@ -371,7 +374,7 @@ export default function Home() {
                     // Disable if other actions/agent busy, or no transcript/history, or currently listening
                     disabled={isActionDisabled || isAgentBusy || !transcript || !patientHistory}
                 >
-                    {isGeneratingSoap || isGeneratingCodes ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
+                    {(isGeneratingSoap || isGeneratingCodes) ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
                     Generate SOAP & Codes
                 </Button>
                 </div>
@@ -380,7 +383,7 @@ export default function Home() {
 
             <SOAPNote
                 initialNote={soapNote}
-                isLoading={isGeneratingSoap} // Only show SOAP loading state here
+                isLoading={isGeneratingSoap} // Pass only SOAP loading state
                 isSaving={isSavingNote}
                 onSave={handleSaveNote} // Trigger EHR Agent
                 // Disable editing/saving based on actions or busy agent or if listening
