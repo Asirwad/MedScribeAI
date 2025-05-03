@@ -252,7 +252,7 @@ export default function Home() {
         });
 
         setSoapNote(result.soapNote);
-        setIsGeneratingSoap(false); // <<< FIX: Set loading to false after getting result
+        //setIsGeneratingSoap(false); // Let transition handle this now
         toast({ title: 'SOAP Note Generated', description: 'Review and edit the note below. Generating codes...' });
 
         // Chain to billing code generation ONLY after successful SOAP generation
@@ -265,6 +265,9 @@ export default function Home() {
         setIsGeneratingSoap(false); // Ensure loading state is reset on error
         setIsGeneratingCodes(false); // Also reset code loading state if SOAP fails
         transitionAgentState('error'); // Set error state directly
+    } finally {
+        setIsGeneratingSoap(false); // Ensure loading state is reset in finally block as well
+        // Code generation loading state is handled by handleGenerateBillingCodes finally block
     }
  }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState]); // Removed agentState dependency
 
@@ -344,7 +347,7 @@ export default function Home() {
              onAudioBlob={handleAudioBlob} // Real-Time Listening Agent trigger
              isTranscribing={isTranscribing}
              transcriptValue={transcript}
-             disabled={isActionDisabled || isAgentBusy} // Disable during actions OR if agent is busy
+             disabled={isActionDisabled && !isListening} // Disable most actions but allow stopping listening
              isListening={isListening}
              setIsListening={setIsListening} // Pass setter down
            />
@@ -389,3 +392,5 @@ export default function Home() {
      </>
   );
 }
+
+    

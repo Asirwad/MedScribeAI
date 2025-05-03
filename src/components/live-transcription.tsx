@@ -129,7 +129,8 @@ export function LiveTranscription({
             variant={isListening ? "destructive" : "outline"} // Change variant when listening
             size="icon"
             onClick={isListening ? stopRecording : startRecording}
-            disabled={disabled || isTranscribing} // Disable button if parent says disabled OR if currently processing audio
+            // Allow stopping even if other actions are disabled, but not starting
+            disabled={disabled && !isListening || isTranscribing}
             aria-label={isListening ? 'Stop Recording' : 'Start Recording'}
             className={cn(
               "relative overflow-visible", // Ensure ping animation isn't clipped
@@ -168,3 +169,4 @@ export function LiveTranscription({
   );
 }
 
+    
