@@ -24,6 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Users, Settings, UserPlus, PanelLeft } from 'lucide-react'; // Import PanelLeft for mobile trigger
 import type { Patient } from '@/services/ehr_client';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { cn } from '@/lib/utils'; // Import cn
 
 interface AppLayoutProps {
   patients: Patient[];
@@ -112,8 +113,13 @@ function MobileHeader() {
   }
 
   return (
-     // Sticky header visible only on mobile (md:hidden)
-     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
+     // Sticky header visible only on mobile (md:hidden), positioned at the top
+     <header className={cn(
+         "sticky top-0 z-40", // Make header sticky, z-index below overlays
+         "flex h-14 items-center justify-between",
+         "border-b bg-background px-4", // Styling
+         "md:hidden" // Hide on medium screens and up
+        )}>
         {/* Mobile Sidebar Trigger */}
         <Button
           variant="ghost"
