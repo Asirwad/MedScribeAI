@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // WARNING: INSECURE FOR PRODUCTION - Allows anyone to read patient data.
+    // For testing, this makes it easier to verify data fetching.
+    // Replace `true` with `request.auth != null` to restrict reads to logged-in users.
+    // For production, implement fine-grained access control based on roles or ownership.
+    match /patients/{patientId} {
+      allow read: if true;
+      // Allow authenticated users to create/update/delete patients (example)
+      allow write: if request.auth != null;
+    }
+
+    // Example rules for other collections (restrict to authenticated users)
+    match /observations/{observationId} {
+      allow read, write: if request.auth != null;
+    }
+    match /encounters/{encounterId} {
+      allow read, write: if request.auth != null;
+    }
+    match /notes/{noteId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Add more specific rules based on your application's requirements.
+    // For example, only allow a user to read/write their own data,
+    // or only allow clinicians to access patient records they are assigned to.
+  }
+}

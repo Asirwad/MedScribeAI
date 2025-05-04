@@ -125,18 +125,34 @@ const notesCollection = collection(db, 'notes');
 
 /**
  * Asynchronously retrieves a list of all patients from Firestore.
+ * Logs detailed error if fetch fails.
  *
  * @returns A promise that resolves to an array of Patient objects.
+ * @throws An error if fetching from Firestore fails.
  */
 export async function getPatientsList(): Promise<Patient[]> {
     try {
         const snapshot = await getDocs(patientsCollection);
         const patients = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Patient));
         console.log(`[EHR Client] Fetched ${patients.length} patients from Firestore.`);
+        // Handle cases where snapshot exists but is empty (valid case, not an error)
+        if (patients.length === 0) {
+            console.log("[EHR Client] No patients found in the 'patients' collection.");
+        }
         return patients;
-    } catch (error) {
-        console.error("Error fetching patients list:", error);
-        throw new Error('Failed to fetch patients list from Firestore.');
+    } catch (error: any) { // Catch specific error type if known, otherwise 'any'
+        // Log the detailed error object for debugging
+        console.error("Error fetching patients list from Firestore:", error);
+        // Check for specific Firestore error codes if needed
+        if (error.code === 'permission-denied') {
+             console.error("Firestore permission denied. Check your security rules.");
+        } else if (error.code === 'unauthenticated') {
+             console.error("Firestore request unauthenticated. Ensure user is logged in or rules allow public access.");
+        } else if (error.code === 'unavailable') {
+            console.error("Firestore service unavailable. Check Firebase status or network connection.");
+        }
+        // Re-throw a user-friendly error, but the detailed one is logged above
+        throw new Error('Failed to fetch patients list from Firestore. Check console/logs for details.');
     }
 }
 
@@ -169,7 +185,7 @@ export async function getPatient(patientId: string): Promise<Patient> {
  *
  * @param patientId The ID of the patient to retrieve observations for.
  * @param count The maximum number of observations to retrieve.
- * @returns A promise that resolves to an array of Observation objects. Returns empty array if no observations.
+ * @returns A promise that resolves to an array of Observation objects. Returns empty array if no observations or on error.
  */
 export async function getObservations(patientId: string, count: number = 5): Promise<Observation[]> {
     // await delay(200); // Optional delay
@@ -197,7 +213,7 @@ export async function getObservations(patientId: string, count: number = 5): Pro
  *
  * @param patientId The ID of the patient to retrieve encounters for.
  * @param count The maximum number of encounters to retrieve.
- * @returns A promise that resolves to an array of Encounter objects. Returns empty array if no encounters.
+ * @returns A promise that resolves to an array of Encounter objects. Returns empty array if no encounters or on error.
  */
 export async function getEncounters(patientId: string, count: number = 5): Promise<Encounter[]> {
     // await delay(250); // Optional delay

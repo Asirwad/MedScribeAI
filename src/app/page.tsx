@@ -102,10 +102,13 @@ export default function Home() {
                   setPatients(patientList); // Updates state with DB list
                   // Selection of first patient is handled in a separate effect
               } catch (error) {
+                  // Log the specific error for debugging
                   console.error('Error fetching initial patient list:', error);
+                  // Show a user-friendly toast message
                   toast({
                       title: 'Error Loading Patients',
-                      description: 'Could not load the list of patients from the database.',
+                      // Provide more context in the description if possible
+                      description: `Could not load the patient list. ${error instanceof Error ? error.message : 'Please check console for details.'}`,
                       variant: 'destructive',
                   });
                    setPatients([]); // Ensure patients list is empty on error
@@ -121,7 +124,7 @@ export default function Home() {
       // Dependencies: showLandingPage triggers fetch when leaving landing page.
       // isFetchingData prevents concurrent fetches.
       // patients.length condition prevents refetch after local update.
-  }, [showLandingPage, isFetchingData]);
+  }, [showLandingPage, isFetchingData, toast]); // Added toast to dependencies
 
 
   // Reset application state for a new patient or when returning to landing page
