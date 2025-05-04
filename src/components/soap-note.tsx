@@ -87,14 +87,14 @@ export function SOAPNote({ initialNote, isLoading, isSaving, onSave, disabled = 
     if (isLoading) {
       return (
         <div className="space-y-4 p-4 flex-grow"> {/* Added flex-grow for skeleton */}
-          <Skeleton className="h-6 w-1/4" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-6 w-1/4" />
-          <Skeleton className="h-16 w-full" />
-           <Skeleton className="h-6 w-1/4" />
-          <Skeleton className="h-16 w-full" />
-           <Skeleton className="h-6 w-1/4" />
-          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-6 w-1/4 bg-muted/50" />
+          <Skeleton className="h-16 w-full bg-muted/50" />
+          <Skeleton className="h-6 w-1/4 bg-muted/50" />
+          <Skeleton className="h-16 w-full bg-muted/50" />
+           <Skeleton className="h-6 w-1/4 bg-muted/50" />
+          <Skeleton className="h-16 w-full bg-muted/50" />
+           <Skeleton className="h-6 w-1/4 bg-muted/50" />
+          <Skeleton className="h-16 w-full bg-muted/50" />
         </div>
       );
     }
@@ -117,53 +117,57 @@ export function SOAPNote({ initialNote, isLoading, isSaving, onSave, disabled = 
       // Removed fixed height, use flex-grow on parent CardContent
       <div className="space-y-4 flex-grow">
         <div>
-          <Label htmlFor="subjective">Subjective</Label>
+          <Label htmlFor="subjective" className="text-foreground/90">Subjective</Label>
           <Textarea
             id="subjective"
             value={noteSections.subjective}
             onChange={(e) => handleSectionChange('subjective', e.target.value)}
             rows={4}
             readOnly={!isEditing}
-            className={cn('w-full min-h-[80px]', !isEditing ? 'bg-muted/50 border-none' : '')} // Added min-h
+            // Adjusted textarea style for glassmorphism
+            className={cn('w-full min-h-[80px] bg-secondary/50 backdrop-blur-sm border-border/30', !isEditing ? ' border-none' : '')}
             disabled={disabled || isSaving} // Disable textarea when saving too
             placeholder={isEditing ? "Patient's reported symptoms, history..." : ""}
           />
         </div>
         <div>
-          <Label htmlFor="objective">Objective</Label>
+          <Label htmlFor="objective" className="text-foreground/90">Objective</Label>
           <Textarea
             id="objective"
             value={noteSections.objective}
             onChange={(e) => handleSectionChange('objective', e.target.value)}
             rows={4}
-             readOnly={!isEditing}
-            className={cn('w-full min-h-[80px]', !isEditing ? 'bg-muted/50 border-none' : '')} // Added min-h
+            readOnly={!isEditing}
+             // Adjusted textarea style for glassmorphism
+            className={cn('w-full min-h-[80px] bg-secondary/50 backdrop-blur-sm border-border/30', !isEditing ? ' border-none' : '')}
             disabled={disabled || isSaving}
             placeholder={isEditing ? "Vitals, exam findings, lab results..." : ""}
           />
         </div>
         <div>
-          <Label htmlFor="assessment">Assessment</Label>
+          <Label htmlFor="assessment" className="text-foreground/90">Assessment</Label>
           <Textarea
             id="assessment"
             value={noteSections.assessment}
             onChange={(e) => handleSectionChange('assessment', e.target.value)}
             rows={4}
             readOnly={!isEditing}
-            className={cn('w-full min-h-[80px]', !isEditing ? 'bg-muted/50 border-none' : '')} // Added min-h
+             // Adjusted textarea style for glassmorphism
+            className={cn('w-full min-h-[80px] bg-secondary/50 backdrop-blur-sm border-border/30', !isEditing ? ' border-none' : '')}
             disabled={disabled || isSaving}
              placeholder={isEditing ? "Diagnosis, differential diagnosis..." : ""}
           />
         </div>
         <div>
-          <Label htmlFor="plan">Plan</Label>
+          <Label htmlFor="plan" className="text-foreground/90">Plan</Label>
           <Textarea
             id="plan"
             value={noteSections.plan}
             onChange={(e) => handleSectionChange('plan', e.target.value)}
             rows={4}
             readOnly={!isEditing}
-            className={cn('w-full min-h-[80px]', !isEditing ? 'bg-muted/50 border-none' : '')} // Added min-h
+            // Adjusted textarea style for glassmorphism
+            className={cn('w-full min-h-[80px] bg-secondary/50 backdrop-blur-sm border-border/30', !isEditing ? ' border-none' : '')}
             disabled={disabled || isSaving}
             placeholder={isEditing ? "Treatment, tests, referrals, follow-up..." : ""}
           />
@@ -174,13 +178,15 @@ export function SOAPNote({ initialNote, isLoading, isSaving, onSave, disabled = 
 
 
   return (
-    // Apply className and flex structure
-    <Card className={cn("shadow-md flex flex-col h-full", className)}>
+    // Apply glassmorphism to the Card
+    <Card className={cn(
+        "bg-card/70 backdrop-blur-lg border border-border/50 shadow-sm flex flex-col h-full", // Glassmorphism classes
+        className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-2 flex-shrink-0">
         <CardTitle>SOAP Note</CardTitle>
          {/* Show Edit/Cancel button only if not loading and there's content OR if explicitly editing */}
          {(!isLoading && (initialNote || isEditing)) && (
-             <Button variant="ghost" size="icon" onClick={toggleEdit} disabled={disabled || isSaving} aria-label={isEditing ? 'Cancel Edit' : 'Edit Note'}>
+             <Button variant="ghost" size="icon" onClick={toggleEdit} disabled={disabled || isSaving} aria-label={isEditing ? 'Cancel Edit' : 'Edit Note'} className="text-foreground/80 hover:bg-accent/50">
                <Pencil className="h-4 w-4" />
              </Button>
            )}
@@ -191,7 +197,7 @@ export function SOAPNote({ initialNote, isLoading, isSaving, onSave, disabled = 
        {/* Show Save button only if editing and not loading/saving */}
        {(isEditing && !isLoading) && (
          <CardFooter className="flex justify-end flex-shrink-0 pt-4">
-             <Button onClick={handleSave} disabled={isSaving || disabled || !isEditing}>
+             <Button onClick={handleSave} disabled={isSaving || disabled || !isEditing} className="bg-primary/80 hover:bg-primary/90 text-primary-foreground">
                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                Save Note
              </Button>
@@ -200,7 +206,7 @@ export function SOAPNote({ initialNote, isLoading, isSaving, onSave, disabled = 
          {/* Show disabled Save button if there is content but not editing (implies note loaded) */}
         {(!isEditing && initialNote && !isLoading && !isSaving) && (
          <CardFooter className="flex justify-end flex-shrink-0 pt-4">
-             <Button disabled>
+             <Button disabled className="bg-primary/50 text-primary-foreground/70 cursor-not-allowed">
                <Save className="mr-2 h-4 w-4" />
                Save Note (Click Edit)
              </Button>

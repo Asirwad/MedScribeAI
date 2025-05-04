@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning> {/* suppressHydrationWarning recommended for next-themes */}
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${openSans.variable} antialiased`} // Use Open Sans variable
       >

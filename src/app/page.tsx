@@ -19,6 +19,7 @@ import { AddPatientForm } from '@/components/add-patient-form';
 import { AgentVisualizationOverlay, AgentState } from '@/components/agent-visualization-overlay';
 import { LandingPage } from '@/components/landing-page'; // Import the LandingPage component
 import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
+import { cn } from '@/lib/utils'; // Import cn
 
 // Minimum time (in ms) to display each agent state in the overlay
 const MIN_AGENT_STATE_DISPLAY_TIME = 1500;
@@ -385,7 +386,12 @@ export default function Home() {
       onReturnToLanding={handleReturnToLanding} // Pass the return function
     >
         {/* Main content area using grid for desktop layout */}
-        <div className="flex-1 p-4 md:p-6 relative overflow-hidden"> {/* Changed overflow-auto to hidden */}
+        {/* Apply a subtle background pattern or gradient for depth */}
+        <div className={cn(
+          "flex-1 p-4 md:p-6 relative overflow-hidden",
+          "bg-gradient-to-br from-background via-secondary/10 to-background" // Example gradient
+          // Or use a background image pattern: "bg-[url('/path/to/pattern.svg')] bg-repeat"
+        )}>
             {/* Grid container */}
             <div className="h-full grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_1fr] gap-6 md:gap-8"> {/* Define grid structure */}
 
@@ -416,6 +422,8 @@ export default function Home() {
                             <Button
                                 onClick={handleGenerateSoapNote}
                                 disabled={isActionDisabled || isAgentBusy || !transcript || !patientHistory}
+                                // Adjusted button style for glassmorphism context
+                                className="bg-primary/80 hover:bg-primary/90 text-primary-foreground shadow-md"
                             >
                                 {(isGeneratingSoap || isGeneratingCodes) ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
                                 Generate SOAP & Codes

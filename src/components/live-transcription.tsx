@@ -134,8 +134,10 @@ export function LiveTranscription({
 
   return (
     <>
-      {/* Apply className to the Card and make it flex-col and h-full */}
-      <Card className={cn("shadow-md flex flex-col h-full", className)}>
+      {/* Apply glassmorphism to the Card */}
+      <Card className={cn(
+        "bg-card/70 backdrop-blur-lg border border-border/50 shadow-sm flex flex-col h-full", // Glassmorphism classes
+        className)}>
         <CardHeader className="flex flex-row items-center justify-between pb-2 flex-shrink-0"> {/* Prevent header shrink */}
           <CardTitle>Live Transcription / Manual Entry</CardTitle>
           <Button
@@ -146,7 +148,7 @@ export function LiveTranscription({
             disabled={isStartDisabled}
             aria-label={'Start Recording'}
             className={cn(
-              "relative overflow-visible" // Ensure ping animation isn't clipped
+              "relative overflow-visible bg-background/70 hover:bg-accent/70 text-foreground border-border/50" // Adjusted button style for glassmorphism
             )}
           >
              {isTranscribing ? (
@@ -163,7 +165,7 @@ export function LiveTranscription({
             onChange={handleTextareaChange} // Use internal handler
             rows={8} // Keep initial rows suggestion, but height will be controlled by flex-grow
             className={cn(
-               "w-full bg-secondary/30 transition-opacity duration-300 flex-grow resize-none", // Use flex-grow and remove resize handle
+               "w-full bg-secondary/50 backdrop-blur-sm border-border/30 transition-opacity duration-300 flex-grow resize-none", // Adjusted textarea style for glassmorphism
                isListening ? "opacity-50 cursor-not-allowed" : "opacity-100", // Dim textarea when listening
                isTranscribing ? "opacity-50 cursor-wait" : "opacity-100" // Dim when transcribing
              )}
