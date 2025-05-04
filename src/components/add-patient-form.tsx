@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { createPatient, type Patient } from '@/services/ehr_client';
+import { type Patient } from '@/services/ehr_client'; // Only import type
 import { useToast } from '@/hooks/use-toast';
 import {
   Select,
@@ -52,12 +52,13 @@ type PatientFormValues = z.infer<typeof patientFormSchema>;
 interface AddPatientFormProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onPatientAdded: (newPatient: Patient) => void;
+  // Changed signature: expects patient data, not the created Patient object
+  onPatientAdded: (newPatientData: Omit<Patient, 'id'>) => void;
 }
 
 export function AddPatientForm({ isOpen, onOpenChange, onPatientAdded }: AddPatientFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
+  const { toast } = useToast(); // Keep toast for potential form-level errors if needed
   const isMobile = useIsMobile(); // Check if mobile
 
   const form = useForm<PatientFormValues>({
@@ -69,23 +70,25 @@ export function AddPatientForm({ isOpen, onOpenChange, onPatientAdded }: AddPati
     },
   });
 
+  // onSubmit no longer calls createPatient directly
   const onSubmit = async (data: PatientFormValues) => {
     setIsSubmitting(true);
     try {
-      const newPatient = await createPatient(data);
-      onPatientAdded(newPatient); // Let parent handle the toast based on mobile state
-      // toast({ // Removed from here
-      //   title: 'Patient Added',
-      //   description: `${newPatient.name} has been added successfully.`,
-      // });
+      // Call the parent handler with the form data
+      // The parent (Home component) is now responsible for calling createPatient
+      await onPatientAdded(data);
+      // Parent handles success toast and state updates (refetching list)
+
       form.reset(); // Reset form after successful submission
       onOpenChange(false); // Close the dialog
     } catch (error) {
-      console.error('Error adding patient:', error);
-      // Always show error toast
+      // This catch block might handle errors thrown by onPatientAdded if it awaits something risky,
+      // or can be used for form-specific errors. Parent handles creation errors.
+      console.error('Error submitting patient form or in parent handler:', error);
+      // Show a generic error toast for form submission issues
       toast({
-        title: 'Error Adding Patient',
-        description: 'Could not add the patient. Please try again.',
+        title: 'Submission Error',
+        description: 'Could not submit patient details. Please try again.',
         variant: 'destructive',
       });
     } finally {

@@ -45,7 +45,8 @@ export default function Home() {
   const [isGeneratingCodes, setIsGeneratingCodes] = useState<boolean>(false);
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
-  const [isFetchingData, setIsFetchingData] = useState<boolean>(false); // Covers both patient list and details
+  const [isFetchingPatientList, setIsFetchingPatientList] = useState<boolean>(false); // Specific state for list fetching
+  const [isFetchingPatientDetails, setIsFetchingPatientDetails] = useState<boolean>(false); // Specific state for details fetching
   const [patientHistory, setPatientHistory] = useState<string>('');
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
   const [agentState, setAgentState] = useState<AgentState>('idle');
@@ -88,45 +89,6 @@ export default function Home() {
   }, []);
 
 
-   // Load initial list of patients from Firestore when the app loads (not on landing page)
-   useEffect(() => {
-      const loadPatients = async () => {
-          // Only load if not on landing page and not already fetching
-          // AND if the local patients list is empty (to avoid re-fetching unnecessarily after local updates)
-          if (!showLandingPage && !isFetchingData && patients.length === 0) {
-              setIsFetchingData(true); // Indicate loading patient list
-              console.log("Initial patient list fetch triggered..."); // Add log
-              try {
-                  const patientList = await getPatientsList(); // Fetches from DB
-                  console.log(`Firestore getPatientsList result: ${patientList.length} patients`); // Add log
-                  setPatients(patientList); // Updates state with DB list
-                  // Selection of first patient is handled in a separate effect
-              } catch (error) {
-                  // Log the specific error for debugging
-                  console.error('Error fetching initial patient list:', error);
-                  // Show a user-friendly toast message
-                  toast({
-                      title: 'Error Loading Patients',
-                      // Provide more context in the description if possible
-                      description: `Could not load the patient list. ${error instanceof Error ? error.message : 'Please check console for details.'}`,
-                      variant: 'destructive',
-                  });
-                   setPatients([]); // Ensure patients list is empty on error
-              } finally {
-                 setIsFetchingData(false); // Set fetching false ONLY after list fetch attempt
-                 console.log("Initial patient list fetch finished."); // Add log
-              }
-          } else {
-              console.log("Skipping initial patient list fetch. Conditions:", { showLandingPage, isFetchingData, patientsLength: patients.length });
-          }
-      };
-      loadPatients();
-      // Dependencies: showLandingPage triggers fetch when leaving landing page.
-      // isFetchingData prevents concurrent fetches.
-      // patients.length condition prevents refetch after local update.
-  }, [showLandingPage, isFetchingData, toast]); // Added toast to dependencies
-
-
   // Reset application state for a new patient or when returning to landing page
   const resetAppState = useCallback(() => {
       console.log("Resetting app state"); // Add log
@@ -147,18 +109,26 @@ export default function Home() {
           clearTimeout(agentStateTimerRef.current);
           agentStateTimerRef.current = null;
       }
-  }, []);
+  }, []); // No dependencies needed here
+
+  // Declare fetchPatientData function reference before loadPatientsList
+  const fetchPatientDataRef = useRef<((patientId: string) => Promise<void>) | null>(null);
+  // Declare loadPatientsList function reference before fetchPatientData
+  const loadPatientsListRef = useRef<((selectFirst?: boolean, newPatientId?: string | null) => Promise<void>) | null>(null);
 
 
-  // Simulate Pre-Visit Agent: Fetches data for the selected patient
-  const fetchPatientData = useCallback(async (patientId: string) => {
-    // Prevent fetching if still on landing page
-    if (showLandingPage) return;
-    console.log(`Fetching data for patient: ${patientId}`); // Add log
+   // Simulate Pre-Visit Agent: Fetches data for the selected patient
+   const fetchPatientData = useCallback(async (patientId: string) => {
+    // Prevent fetching if still on landing page or already fetching details
+    if (showLandingPage || isFetchingPatientDetails) {
+        console.log(`[fetchPatientData] Skipping fetch for ${patientId}. Conditions:`, { showLandingPage, isFetchingPatientDetails });
+        return;
+    }
+    console.log(`[fetchPatientData] Fetching data for patient: ${patientId}`); // Add log
 
-    setIsFetchingData(true);
+    setIsFetchingPatientDetails(true);
     // Clear previous patient's data but keep the main patient list
-    setSelectedPatient(null);
+    setSelectedPatient(null); // Clear selection first
     setObservations([]);
     setEncounters([]);
     setPatientHistory('');
@@ -176,11 +146,21 @@ export default function Home() {
       ]);
 
        if (!patientData) {
-         throw new Error(`Patient ${patientId} data is null after fetch.`);
+         // If patient data is null, maybe the patient was deleted between list load and detail fetch
+         console.warn(`[fetchPatientData] Patient ${patientId} data is null after fetch. Might have been deleted. Reloading list.`);
+         // Don't throw an error here, instead reload the list to get the current state
+         toast({ title: "Patient Not Found", description:"Selected patient could not be loaded. Reloading list.", variant: "warning"});
+         // Call loadPatientsList using the ref if available
+         if (loadPatientsListRef.current) {
+             await loadPatientsListRef.current(true); // Reload the list and select the first available one
+         }
+         transitionAgentState('idle'); // Go back to idle after list reload attempt
+         setIsFetchingPatientDetails(false); // Reset details fetching state
+         return; // Exit this fetch attempt
        }
 
-      console.log(`Successfully fetched data for patient: ${patientData.name}`); // Add log
-      setSelectedPatient(patientData);
+      console.log(`[fetchPatientData] Successfully fetched data for patient: ${patientData.name}`); // Add log
+      setSelectedPatient(patientData); // Set the selected patient state *after* successful fetch
       setObservations(obsData);
       setEncounters(encData);
 
@@ -194,33 +174,98 @@ export default function Home() {
       transitionAgentState('fetching_data', 'idle');
 
     } catch (error) {
-      console.error('Error fetching patient data:', error);
+      console.error('[fetchPatientData] Error fetching patient data:', error);
       toast({
         title: 'Error Fetching Data',
-        description: 'Could not load patient details from the database.',
+        description: 'Could not load patient details.',
         variant: 'destructive',
       });
-      resetAppState(); // Reset state on error
       transitionAgentState('error');
     } finally {
-      setIsFetchingData(false);
-      console.log(`Finished fetching data attempt for patient: ${patientId}`); // Add log
+      setIsFetchingPatientDetails(false);
+      console.log(`[fetchPatientData] Finished fetching data attempt for patient: ${patientId}`); // Add log
     }
-  }, [toast, transitionAgentState, showLandingPage, resetAppState]); // Added showLandingPage, resetAppState
+   // Removed loadPatientsList from dependencies, call via ref if needed. Added resetAppState
+   }, [toast, transitionAgentState, showLandingPage, isFetchingPatientDetails, resetAppState]);
+
+   // Assign the function to the ref after definition
+   useEffect(() => {
+      fetchPatientDataRef.current = fetchPatientData;
+   }, [fetchPatientData]);
+
+
+   // Function to load the patient list from Firestore
+   const loadPatientsList = useCallback(async (selectFirst = false, newPatientId: string | null = null) => {
+     if (isFetchingPatientList) return; // Prevent concurrent fetches
+     console.log(`[loadPatientsList] Triggered. selectFirst=${selectFirst}, newPatientId=${newPatientId}`); // Add log
+     setIsFetchingPatientList(true);
+     try {
+         const patientList = await getPatientsList();
+         console.log(`[loadPatientsList] Firestore getPatientsList result: ${patientList.length} patients`);
+         setPatients(patientList);
+
+         // Determine which patient to select after loading
+         let patientToSelectId: string | null = null;
+         if (newPatientId && patientList.some(p => p.id === newPatientId)) {
+             patientToSelectId = newPatientId; // Select the newly added patient if they exist in the list
+         } else if (selectFirst && patientList.length > 0) {
+             patientToSelectId = patientList[0].id; // Select the first patient if requested and list is not empty
+         }
+
+         if (patientToSelectId && fetchPatientDataRef.current) {
+             console.log(`[loadPatientsList] Selecting patient: ${patientToSelectId}`);
+             await fetchPatientDataRef.current(patientToSelectId); // Fetch details using the ref
+         } else if (!newPatientId && patientList.length === 0) {
+             console.log("[loadPatientsList] No patients found, resetting app state.");
+             resetAppState(); // Reset if no patients are available
+         } else {
+              console.log("[loadPatientsList] No specific patient selected after loading.");
+         }
+
+     } catch (error) {
+         console.error('[loadPatientsList] Error loading patients list:', error);
+         toast({
+             title: 'Error Loading Patients',
+             description: 'Could not load the patient list.',
+             variant: 'destructive',
+         });
+         setPatients([]); // Ensure list is empty on error
+         resetAppState(); // Reset app state on error
+     } finally {
+         setIsFetchingPatientList(false);
+         console.log("[loadPatientsList] Fetch finished."); // Add log
+     }
+    // Only depends on resetAppState and toast now. fetchPatientData is called via ref.
+   }, [toast, isFetchingPatientList, resetAppState]);
+
+   // Assign the function to the ref after definition
+   useEffect(() => {
+     loadPatientsListRef.current = loadPatientsList;
+   }, [loadPatientsList]);
+
+
+   // Load initial list of patients when the app loads (not on landing page)
+   useEffect(() => {
+       if (!showLandingPage && patients.length === 0 && !isFetchingPatientList && !isFetchingPatientDetails) {
+           console.log("[useEffect loadPatients] Conditions met, calling loadPatientsList.");
+           loadPatientsList(true); // Load list and select the first patient
+       } else {
+           console.log("[useEffect loadPatients] Skipping initial load.", { showLandingPage, patientsLength: patients.length, isFetchingPatientList, isFetchingPatientDetails });
+       }
+       // Dependency is loadPatientsList, which uses refs for potentially changing functions
+   }, [showLandingPage, loadPatientsList, patients.length, isFetchingPatientList, isFetchingPatientDetails]);
+
 
 
   const handleSelectPatient = (patientId: string) => {
     // Prevent selection if still on landing page
     if (showLandingPage) return;
-    console.log(`handleSelectPatient called for ID: ${patientId}`); // Add log
-    const patient = patients.find(p => p.id === patientId);
-    if (patient) {
-       console.log(`Found patient locally: ${patient.name}. Triggering fetchPatientData.`); // Add log
-       fetchPatientData(patientId);
+    console.log(`[handleSelectPatient] called for ID: ${patientId}`); // Add log
+    // Use the ref to call fetchPatientData
+    if (fetchPatientDataRef.current) {
+        fetchPatientDataRef.current(patientId);
     } else {
-        console.warn(`Patient with ID ${patientId} not found in local list.`);
-        // Optional: Could trigger a refetch of the list here if desired
-         toast({ title: "Patient Not Found", description:"Selected patient not found in the current list.", variant: "destructive"})
+        console.error("fetchPatientData function reference not available yet.");
     }
   };
 
@@ -381,29 +426,33 @@ export default function Home() {
     }
   };
 
-  // Handler for adding a new patient via the form
-  const handlePatientAdded = (newPatient: Patient) => {
-      console.log(`handlePatientAdded called with: ${newPatient.name}, ID: ${newPatient.id}`); // Add log
-      setPatients(prevPatients => {
-        console.log(`Updating local patients state. Previous length: ${prevPatients.length}`); // Add log
-        const updatedPatients = [...prevPatients, newPatient];
-        console.log(`New local patients state length: ${updatedPatients.length}`); // Add log
-        return updatedPatients;
-      });
-    // Always show patient added toast
-     toast({
-        title: 'Patient Added',
-        description: `${newPatient.name} has been added successfully.`,
-      });
-    // Automatically select and fetch data for the newly added patient
-    // only if not on the landing page anymore
-    if (!showLandingPage) {
-        console.log("Not on landing page, triggering selection for new patient."); // Add log
-        handleSelectPatient(newPatient.id);
-    } else {
-        console.log("On landing page, skipping auto-selection."); // Add log
-    }
+ // Handler for adding a new patient via the form
+  const handlePatientAdded = async (newPatientData: Omit<Patient, 'id'>) => {
+      console.log(`[handlePatientAdded] called with: ${newPatientData.name}`);
+      try {
+          const createdPatient = await createPatient(newPatientData); // Create in DB
+          console.log(`[handlePatientAdded] Patient created in DB with ID: ${createdPatient.id}`);
+          toast({
+              title: 'Patient Added',
+              description: `${createdPatient.name} has been added successfully.`,
+          });
+          // Reload the patient list from Firestore to include the new patient
+          // and automatically select the newly added patient. Use the ref
+          if (loadPatientsListRef.current) {
+             await loadPatientsListRef.current(false, createdPatient.id);
+          } else {
+             console.error("loadPatientsList function reference not available yet.");
+          }
+      } catch (error) {
+          console.error('[handlePatientAdded] Error during patient creation or list reload:', error);
+          toast({
+              title: 'Error Adding Patient',
+              description: 'Failed to add patient or reload list.',
+              variant: 'destructive',
+          });
+      }
   };
+
 
    // Handle the "Select Patient" button click from the landing page
    const handleEnterApp = () => {
@@ -421,44 +470,44 @@ export default function Home() {
      setShowLandingPage(true);
    }, [resetAppState]);
 
-  // Effect to handle patient selection changes after landing page is dismissed
-  // Handles initial selection after landing page or if selected patient is removed
+  // Effect to handle patient selection changes or if selected patient is removed from list
   useEffect(() => {
-    if (showLandingPage) {
-        console.log("Patient Selection Effect: On landing page, skipping."); // Add log
+    if (showLandingPage || isFetchingPatientList || isFetchingPatientDetails) {
+        console.log("[useEffect selectionChange] Skipping due to conditions:", { showLandingPage, isFetchingPatientList, isFetchingPatientDetails });
         return;
     }
 
-    // Case 1: Just entered app (showLandingPage became false) OR
-    //         patients list loaded/updated, but no patient is selected, and not currently fetching list/details.
-    if (patients.length > 0 && !selectedPatient && !isFetchingData) {
-        console.log("Patient Selection Effect: Conditions met for selecting first patient."); // Add log
-        // Ensure fetchPatientData is called only once after initial load or state change
-        // Check if fetch is already in progress (redundant check, but safe)
-         if (!isFetchingData) {
-             fetchPatientData(patients[0].id);
-         }
+    const fetchPatientDataFn = fetchPatientDataRef.current; // Use the ref
+    if (!fetchPatientDataFn) {
+        console.log("[useEffect selectionChange] fetchPatientData function not ready yet.");
+        return;
     }
-    // Case 2: Selected patient exists but is no longer in the main list (e.g., deleted elsewhere)
+
+    // Case 1: No patient selected, but list is available -> select first one
+    if (patients.length > 0 && !selectedPatient) {
+        console.log("[useEffect selectionChange] No patient selected, selecting first.");
+        fetchPatientDataFn(patients[0].id);
+    }
+    // Case 2: Selected patient exists but is no longer in the main list (e.g., deleted)
     else if (selectedPatient && !patients.find(p => p.id === selectedPatient.id)) {
-        console.log("Patient Selection Effect: Selected patient removed, selecting first or resetting."); // Add log
+        console.log("[useEffect selectionChange] Selected patient removed, selecting first or resetting.");
         if (patients.length > 0) {
-            fetchPatientData(patients[0].id);
+            fetchPatientDataFn(patients[0].id);
         } else {
             resetAppState(); // No patients left, clear everything
         }
     } else {
-         console.log("Patient Selection Effect: Conditions not met for selection/reset.", {
+         console.log("[useEffect selectionChange] Conditions not met for selection/reset.", {
              patientsLength: patients.length,
              hasSelectedPatient: !!selectedPatient,
-             isFetchingData
-         }); // Add log
+             isFetchingData: isFetchingPatientDetails || isFetchingPatientList
+         });
     }
-    // Dependencies: patients list, current selection, fetching state, and landing page visibility
-}, [patients, selectedPatient, fetchPatientData, isFetchingData, showLandingPage, resetAppState]);
+// Depends on refs and other state variables
+}, [patients, selectedPatient, isFetchingPatientList, isFetchingPatientDetails, showLandingPage, resetAppState]);
 
 
-   const isActionDisabled = showLandingPage || isFetchingData || isTranscribing || isGeneratingSoap || isGeneratingCodes || isSavingNote || isListening;
+   const isActionDisabled = showLandingPage || isFetchingPatientList || isFetchingPatientDetails || isTranscribing || isGeneratingSoap || isGeneratingCodes || isSavingNote || isListening;
    const isAgentBusy = agentState !== 'idle' && agentState !== 'error';
 
 
@@ -494,7 +543,7 @@ export default function Home() {
                         patient={selectedPatient}
                         observations={observations}
                         encounters={encounters}
-                        isLoading={isFetchingData && selectedPatient === null} // Show loading only when switching patients
+                        isLoading={isFetchingPatientDetails && !selectedPatient} // Show loading only when switching patients
                     />
                 </div>
 
@@ -510,7 +559,7 @@ export default function Home() {
                         setIsListening={setIsListening}
                     />
                     {/* Generate Button - Below Transcription Card */}
-                    {transcript && selectedPatient && !isListening && !isGeneratingSoap && !isGeneratingCodes && !isSavingNote && !isTranscribing && !isFetchingData && (
+                    {transcript && selectedPatient && !isListening && !isGeneratingSoap && !isGeneratingCodes && !isSavingNote && !isTranscribing && !isFetchingPatientList && !isFetchingPatientDetails && (
                         <div className="flex justify-end mt-auto pt-4"> {/* Push button to bottom of its container */}
                             <Button
                                 onClick={handleGenerateSoapNote}
@@ -552,8 +601,10 @@ export default function Home() {
      <AddPatientForm
        isOpen={isAddPatientDialogOpen}
        onOpenChange={setIsAddPatientDialogOpen}
-       onPatientAdded={handlePatientAdded}
+       onPatientAdded={handlePatientAdded} // Use updated handler
      />
      </>
   );
 }
+
+    
