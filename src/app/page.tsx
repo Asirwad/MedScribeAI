@@ -132,7 +132,6 @@ export default function Home() {
         Recent Encounters: ${encData.slice(0, 3).map(e => `${new Date(e.startDate).toLocaleDateString()}: ${e.class} - ${e.reason || 'N/A'}`).join('; ') || 'None'}
       `.trim();
       setPatientHistory(history);
-      toast({ title: "Patient Data Loaded", description: `Summary for ${patientData.name} is ready.` });
       transitionAgentState('fetching_data', 'idle');
 
     } catch (error) {
