@@ -58,19 +58,20 @@ export function AppLayout({
         </SidebarHeader>
         <ScrollArea className="flex-1">
           <SidebarContent className="p-0">
+             {/* Wrap patient list in a Group for better visual structure */}
             <SidebarGroup className="p-0">
-               <SidebarGroupLabel className="px-4 flex justify-between items-center">
+               <SidebarGroupLabel className="px-4 flex justify-between items-center text-xs font-semibold uppercase text-muted-foreground tracking-wider pt-2 pb-1">
                  <span>Patients</span>
                </SidebarGroupLabel>
-              <SidebarGroupContent>
+              <SidebarGroupContent className="px-2 py-1"> {/* Add padding around the menu */}
                 <SidebarMenu>
                   {patients.length === 0 && (
-                    <p className="px-4 text-sm text-muted-foreground italic">No patients added yet.</p>
+                    <p className="px-2 text-sm text-muted-foreground italic">No patients added yet.</p>
                   )}
                   {patients.map((patient) => (
                     <SidebarMenuItem key={patient.id}>
                       <SidebarMenuButton
-                        className="justify-start"
+                        className="justify-start font-normal" // Use normal font weight by default
                         isActive={selectedPatient?.id === patient.id}
                         onClick={() => onSelectPatient(patient.id)}
                         tooltip={patient.name}
@@ -110,7 +111,7 @@ export function AppLayout({
 
          {/* SidebarInset provides styling context and handles padding */}
          {/* Content scrolling handled by the child div in page.tsx */}
-         <SidebarInset className="flex-1 flex flex-col overflow-hidden">
+         <SidebarInset className="flex-1 flex flex-col overflow-auto"> {/* Ensure inset can scroll */}
              {/* The actual page content passed as children */}
              {children}
          </SidebarInset>
@@ -146,7 +147,8 @@ function MobileHeader({ onReturnToLanding }: { onReturnToLanding: () => void }) 
         </Button>
          {/* Centered Title/Logo that can link home */}
          <button onClick={onReturnToLanding} className="flex items-center gap-1 outline-none focus:ring-2 focus:ring-ring rounded-md p-1 -m-1">
-            <svg className="h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+            {/* Placeholder Icon - Consider replacing with a proper logo SVG */}
+             <svg className="h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
             <span className="text-lg font-semibold text-primary">MedScribeAI</span> {/* Renamed */}
          </button>
          <div className="w-8 flex-shrink-0"></div> {/* Spacer to balance the layout */}
