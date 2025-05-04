@@ -52,8 +52,7 @@ export function AppLayout({
         <SidebarRail />
         <SidebarHeader className="p-4 flex justify-between items-center">
           <button onClick={onReturnToLanding} className="flex items-center gap-2 group outline-none focus:ring-2 focus:ring-ring rounded-md p-1 -m-1">
-             <svg className="h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg> {/* Example simple logo */}
-             <span className="text-xl font-semibold text-primary group-hover:underline">MediScribeAI</span>
+             <span className="text-xl font-semibold text-primary">MediScribeAI</span>
           </button>
           {/* Add the return to landing button here maybe? Or keep in footer */}
         </SidebarHeader>
