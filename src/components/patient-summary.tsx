@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { Badge } from '@/components/ui/badge'; // Import Badge
 import { cn } from '@/lib/utils'; // Import cn
 import { format, parseISO } from 'date-fns'; // Import date-fns for formatting
 
@@ -140,11 +141,19 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
           {/* Adjust background for better visibility with blur */}
           <ScrollArea className="h-40 border border-border/30 rounded-md p-2 bg-secondary/30">
             {observations.length > 0 ? (
-              <ul className="space-y-1 text-sm text-foreground/90"> {/* Slightly adjust text opacity */}
-                {observations.map((obs) => (
-                  <li key={obs.id}>
-                    {/* Use readable name for code and format date */}
-                    <strong className="font-medium">{getReadableName(obs.code, observationCodeMap)} ({formatDate(obs.date)}):</strong> {obs.value}{obs.units ? ` ${obs.units}` : ''}
+              <ul className="space-y-2 text-sm text-foreground/90"> {/* Slightly adjust text opacity and spacing */}
+                {observations.map((obs, index) => (
+                  <li key={obs.id} className="flex flex-wrap items-center gap-x-2 gap-y-1"> {/* Use flex for alignment */}
+                     {/* Use readable name for code */}
+                    <strong className="font-medium">{getReadableName(obs.code, observationCodeMap)}:</strong>
+                    <span>{obs.value}{obs.units ? ` ${obs.units}` : ''}</span>
+                    {/* Date Badges */}
+                    <div className="flex items-center gap-1">
+                         <Badge variant="secondary" className="whitespace-nowrap">{formatDate(obs.date)}</Badge>
+                         {index === 0 && ( // Add 'New' badge only for the first item
+                            <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white font-semibold">New</Badge>
+                         )}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -158,11 +167,19 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
           {/* Adjust background for better visibility with blur */}
           <ScrollArea className="h-40 border border-border/30 rounded-md p-2 bg-secondary/30">
              {encounters.length > 0 ? (
-                <ul className="space-y-1 text-sm text-foreground/90"> {/* Slightly adjust text opacity */}
-                  {encounters.map((enc) => (
-                    <li key={enc.id}>
-                       {/* Use readable name for class and format date */}
-                      <strong className="font-medium">{formatDate(enc.startDate)}:</strong> {getReadableName(enc.class, encounterClassMap)}{enc.reason ? ` - ${enc.reason}` : ''}
+                <ul className="space-y-2 text-sm text-foreground/90"> {/* Slightly adjust text opacity and spacing */}
+                  {encounters.map((enc, index) => (
+                    <li key={enc.id} className="flex flex-wrap items-center gap-x-2 gap-y-1"> {/* Use flex for alignment */}
+                      {/* Use readable name for class */}
+                      <strong className="font-medium">{getReadableName(enc.class, encounterClassMap)}</strong>
+                      <span>{enc.reason ? `- ${enc.reason}` : ''}</span>
+                       {/* Date Badges */}
+                      <div className="flex items-center gap-1">
+                         <Badge variant="secondary" className="whitespace-nowrap">{formatDate(enc.startDate)}</Badge>
+                         {index === 0 && ( // Add 'New' badge only for the first item
+                            <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white font-semibold">New</Badge>
+                         )}
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -175,4 +192,3 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
     </Card>
   );
 }
-
