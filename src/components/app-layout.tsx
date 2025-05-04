@@ -135,12 +135,13 @@ function AppLayoutContent({
       </Sidebar>
 
       {/* Main Content Area wrapper */}
-      <div className="flex flex-col flex-1 min-h-svh overflow-hidden">
+      <div className="flex flex-col flex-1 min-h-svh overflow-hidden"> {/* Keep overflow hidden here */}
          {/* Header for Mobile View with Trigger */}
          <MobileHeader onReturnToLanding={onReturnToLanding} />
 
          {/* SidebarInset provides styling context and handles padding */}
-         <SidebarInset className="flex-1 flex flex-col overflow-auto">
+         {/* Changed overflow-auto to overflow-hidden */}
+         <SidebarInset className="flex-1 flex flex-col overflow-hidden">
              {children}
          </SidebarInset>
       </div>

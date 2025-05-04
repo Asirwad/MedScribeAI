@@ -61,11 +61,14 @@ export default function Home() {
 
     const transitionToNext = () => {
        setAgentState((currentState) => {
+           // Only transition if the current state is still the one we set
            if (currentState === newState && nextState !== null) {
                return nextState;
            } else if (currentState === newState) {
+                // If no next state is specified, transition to idle
                 return 'idle';
            }
+           // If state changed in the meantime, don't transition
            return currentState;
        });
        agentStateTimerRef.current = null;
@@ -171,6 +174,8 @@ export default function Home() {
   // Handler for transcription results from the agent
   const handleTranscriptionResult = useCallback((newTranscriptChunk: string) => {
     setTranscript(prev => prev ? `${prev}\n${newTranscriptChunk}` : newTranscriptChunk);
+    setSoapNote(''); // Clear SOAP note when transcript changes
+    setBillingCodes([]); // Clear codes when transcript changes
   }, []);
 
 
@@ -181,7 +186,7 @@ export default function Home() {
         // Always show empty audio toast
         toast({ title: "Empty Audio", description: "No audio data was captured.", variant: "default" });
         setIsTranscribing(false);
-        setIsListening(false);
+        setIsListening(false); // Ensure listening state is also reset
         transitionAgentState('idle');
         return;
     }
@@ -200,7 +205,7 @@ export default function Home() {
       base64Audio = await readPromise;
 
       const result = await transcribePatientEncounter({ audioDataUri: base64Audio });
-      handleTranscriptionResult(result.transcript);
+      handleTranscriptionResult(result.transcript); // Update transcript, clear SOAP/codes
       // Show transcription success toast only on non-mobile
       if (!isMobile) {
           toast({ title: "Transcription Segment Processed", description: "Transcript updated." });
@@ -222,6 +227,7 @@ export default function Home() {
  const handleGenerateBillingCodes = useCallback(async (noteToCode: string) => {
     if (showLandingPage) return;
     setIsGeneratingCodes(true);
+    // Note: No separate agent state transition here, as it's part of the SOAP generation flow visually
 
     try {
       const result = await generateBillingCodes({ soapNote: noteToCode });
@@ -230,13 +236,14 @@ export default function Home() {
        if (!isMobile) {
          toast({ title: 'Billing Codes Suggested', description: 'Codes are displayed below.' });
        }
-      transitionAgentState('generating_codes', 'idle');
+       // Transition to idle AFTER codes are generated successfully
+       transitionAgentState('generating_codes', 'idle');
 
     } catch (error) {
       console.error('Error generating billing codes:', error);
       // Always show error toast
       toast({ title: 'Code Suggestion Failed', description: 'Could not suggest billing codes.', variant: 'destructive' });
-      transitionAgentState('error');
+      transitionAgentState('error'); // Transition to error if codes fail
     } finally {
       setIsGeneratingCodes(false);
     }
@@ -253,6 +260,7 @@ export default function Home() {
     setIsGeneratingSoap(true);
     setSoapNote('');
     setBillingCodes([]);
+    // Start the agent visualization flow: Generating SOAP -> Generating Codes
     transitionAgentState('generating_soap', 'generating_codes');
 
     try {
@@ -262,13 +270,14 @@ export default function Home() {
             patientHistory: patientHistory,
         });
 
-        setSoapNote(result.soapNote);
+        setSoapNote(result.soapNote); // Update SOAP note state first
         // Show SOAP generated toast only on non-mobile
         if (!isMobile) {
             toast({ title: 'SOAP Note Generated', description: 'Review and edit the note below. Generating codes...' });
         }
 
-        // Now call handleGenerateBillingCodes
+        // IMPORTANT: Now trigger billing code generation using the *newly generated* SOAP note
+        // The transition to idle will happen inside handleGenerateBillingCodes on success/error
         await handleGenerateBillingCodes(result.soapNote);
 
 
@@ -277,10 +286,10 @@ export default function Home() {
          // Always show error toast
         toast({ title: 'SOAP Generation Failed', description: 'Could not generate SOAP note.', variant: 'destructive' });
         setIsGeneratingSoap(false); // Ensure soap generation stops on error
-        setIsGeneratingCodes(false); // Ensure code generation also stops
-        transitionAgentState('error');
+        setIsGeneratingCodes(false); // Ensure code generation also stops if SOAP failed
+        transitionAgentState('error'); // Transition to error if SOAP generation fails
     } finally {
-        setIsGeneratingSoap(false); // Ensure soap generation state is reset even if codes are generating
+        setIsGeneratingSoap(false); // Ensure soap generation state is reset regardless of code generation outcome
     }
  }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState, showLandingPage, isMobile]); // Add isMobile
 
@@ -296,7 +305,7 @@ export default function Home() {
     transitionAgentState('saving');
     try {
       await postNote(selectedPatient.id, finalNote);
-      setSoapNote(finalNote);
+      setSoapNote(finalNote); // Ensure saved note is reflected
       // Always show save success toast
       toast({ title: 'Note Saved', description: 'SOAP note successfully submitted to EHR.' });
       transitionAgentState('saving', 'idle');
@@ -355,7 +364,7 @@ export default function Home() {
   }, [patients, selectedPatient, handleSelectPatient, isFetchingData, showLandingPage]); // Add showLandingPage dependency
 
 
-   const isActionDisabled = showLandingPage || isFetchingData || isTranscribing || isGeneratingSoap || isGeneratingCodes || isSavingNote;
+   const isActionDisabled = showLandingPage || isFetchingData || isTranscribing || isGeneratingSoap || isGeneratingCodes || isSavingNote || isListening;
    const isAgentBusy = agentState !== 'idle' && agentState !== 'error';
 
 
@@ -375,51 +384,68 @@ export default function Home() {
       initialSidebarOpen={isSidebarInitiallyOpen} // Pass the initial state
       onReturnToLanding={handleReturnToLanding} // Pass the return function
     >
-        <div className="flex-1 p-4 md:p-6 relative pb-24 overflow-auto">
-            <div className="max-w-4xl mx-auto space-y-6">
-            <PatientSummary
-                patient={selectedPatient}
-                observations={observations}
-                encounters={encounters}
-                isLoading={isFetchingData}
-            />
+        {/* Main content area using grid for desktop layout */}
+        <div className="flex-1 p-4 md:p-6 relative overflow-hidden"> {/* Changed overflow-auto to hidden */}
+            {/* Grid container */}
+            <div className="h-full grid grid-cols-1 md:grid-cols-2 md:grid-rows-[auto_1fr] gap-6 md:gap-8"> {/* Define grid structure */}
 
-            <LiveTranscription
-                onManualTranscriptChange={handleManualTranscriptChange}
-                onAudioBlob={handleAudioBlob}
-                isTranscribing={isTranscribing}
-                transcriptValue={transcript}
-                disabled={isActionDisabled}
-                isListening={isListening}
-                setIsListening={setIsListening}
-            />
-
-            {transcript && selectedPatient && !isListening && !isGeneratingSoap && !isGeneratingCodes && !isSavingNote && !isTranscribing && !isFetchingData && (
-                <div className="flex justify-end">
-                <Button
-                    onClick={handleGenerateSoapNote}
-                    disabled={isActionDisabled || isAgentBusy || !transcript || !patientHistory}
-                >
-                    {(isGeneratingSoap || isGeneratingCodes) ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
-                    Generate SOAP & Codes
-                </Button>
+                {/* Patient Summary - Spans both columns at the top */}
+                <div className="md:col-span-2">
+                    <PatientSummary
+                        patient={selectedPatient}
+                        observations={observations}
+                        encounters={encounters}
+                        isLoading={isFetchingData}
+                    />
                 </div>
-            )}
 
-            <SOAPNote
-                initialNote={soapNote}
-                isLoading={isGeneratingSoap}
-                isSaving={isSavingNote}
-                onSave={handleSaveNote}
-                disabled={isActionDisabled || isAgentBusy || isListening}
-            />
+                {/* Left Column - Transcription */}
+                <div className="flex flex-col gap-4 md:gap-6 h-full overflow-hidden"> {/* Allow transcription card to grow */}
+                   <LiveTranscription
+                        onManualTranscriptChange={handleManualTranscriptChange}
+                        onAudioBlob={handleAudioBlob}
+                        isTranscribing={isTranscribing}
+                        transcriptValue={transcript}
+                        disabled={isActionDisabled}
+                        isListening={isListening}
+                        setIsListening={setIsListening}
+                    />
+                    {/* Generate Button - Below Transcription Card */}
+                    {transcript && selectedPatient && !isListening && !isGeneratingSoap && !isGeneratingCodes && !isSavingNote && !isTranscribing && !isFetchingData && (
+                        <div className="flex justify-end mt-auto pt-4"> {/* Push button to bottom of its container */}
+                            <Button
+                                onClick={handleGenerateSoapNote}
+                                disabled={isActionDisabled || isAgentBusy || !transcript || !patientHistory}
+                            >
+                                {(isGeneratingSoap || isGeneratingCodes) ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
+                                Generate SOAP & Codes
+                            </Button>
+                        </div>
+                    )}
+                </div>
 
-            <BillingCodes
-                codes={billingCodes}
-                isLoading={isGeneratingCodes}
-            />
+
+                {/* Right Column - SOAP Note and Billing Codes */}
+                <div className="flex flex-col gap-4 md:gap-6 h-full overflow-hidden"> {/* Column for SOAP and Billing */}
+                     {/* Inner container for scrolling */}
+                    <div className="flex-grow overflow-y-auto space-y-4 md:space-y-6 pr-1"> {/* Make this part scrollable */}
+                        <SOAPNote
+                            initialNote={soapNote}
+                            isLoading={isGeneratingSoap}
+                            isSaving={isSavingNote}
+                            onSave={handleSaveNote}
+                            disabled={isActionDisabled || isAgentBusy} // Removed isListening here as it's covered by isActionDisabled
+                            className="min-h-[300px] md:min-h-0" // Ensure SOAP note has some minimum height
+                        />
+                        <BillingCodes
+                            codes={billingCodes}
+                            isLoading={isGeneratingCodes}
+                             className="min-h-[150px] md:min-h-0" // Ensure Billing codes has some minimum height
+                        />
+                    </div>
+                </div>
             </div>
-            <AgentVisualizationOverlay agentState={agentState} />
+             <AgentVisualizationOverlay agentState={agentState} />
         </div>
     </AppLayout>
      <AddPatientForm

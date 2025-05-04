@@ -19,6 +19,7 @@ interface LiveTranscriptionProps {
   disabled?: boolean; // Overall disable flag from parent
   isListening: boolean; // Receive listening state from parent
   setIsListening: (listening: boolean) => void; // Function to update listening state in parent
+  className?: string; // Add className prop
 }
 
 export function LiveTranscription({
@@ -29,6 +30,7 @@ export function LiveTranscription({
   disabled = false,
   isListening, // Use prop
   setIsListening, // Use prop
+  className // Destructure className
 }: LiveTranscriptionProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -53,10 +55,6 @@ export function LiveTranscription({
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Ensure correct type
         if (audioBlob.size > 0) {
-           // Don't show "Processing audio" toast on mobile
-           // if (!isMobile) {
-           //   toast({ title: "Recording Stopped", description: "Processing audio..." });
-           // }
            onAudioBlob(audioBlob); // Send blob to parent
         } else {
             // Always show empty audio toast
@@ -72,10 +70,6 @@ export function LiveTranscription({
       mediaRecorderRef.current.start();
       setIsListening(true); // Update parent state
       setRecordingStartTime(new Date()); // Set start time
-       // Don't show "Recording Started" toast on mobile
-      // if (!isMobile) {
-      //   toast({ title: "Recording Started", description: "Microphone is active." });
-      // }
 
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -98,11 +92,6 @@ export function LiveTranscription({
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
-      // Status message set in onstop handler
-      // Don't show "Stopping Recording" toast on mobile
-      // if (!isMobile) {
-      //   toast({ title: "Stopping Recording...", description: "Please wait." }); // Indicate stopping
-      // }
     }
      // If stopped manually before any data, ensure listening state is updated
      // This might be redundant due to onstop, but ensures state consistency
@@ -145,8 +134,9 @@ export function LiveTranscription({
 
   return (
     <>
-      <Card className="mb-6 shadow-md">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+      {/* Apply className to the Card and make it flex-col and h-full */}
+      <Card className={cn("shadow-md flex flex-col h-full", className)}>
+        <CardHeader className="flex flex-row items-center justify-between pb-2 flex-shrink-0"> {/* Prevent header shrink */}
           <CardTitle>Live Transcription / Manual Entry</CardTitle>
           <Button
             variant={"outline"} // Only start variant needed
@@ -166,14 +156,14 @@ export function LiveTranscription({
             )}
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-grow flex flex-col"> {/* Allow content to grow and contain textarea */}
           <Textarea
             placeholder={getPlaceholderText()}
             value={transcriptValue} // Controlled by parent state
             onChange={handleTextareaChange} // Use internal handler
-            rows={8}
+            rows={8} // Keep initial rows suggestion, but height will be controlled by flex-grow
             className={cn(
-               "w-full bg-secondary/30 transition-opacity duration-300",
+               "w-full bg-secondary/30 transition-opacity duration-300 flex-grow resize-none", // Use flex-grow and remove resize handle
                isListening ? "opacity-50 cursor-not-allowed" : "opacity-100", // Dim textarea when listening
                isTranscribing ? "opacity-50 cursor-wait" : "opacity-100" // Dim when transcribing
              )}
