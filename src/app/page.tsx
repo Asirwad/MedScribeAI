@@ -60,7 +60,7 @@ export default function Home() {
 
   const { toast } = useToast();
   // Declare fetchPatientData function reference before loadPatientsList
-  const fetchPatientDataRef = useRef<((patientId: string) => Promise<void>) | null>(null);
+  const fetchPatientDataRef = useRef<((patientId: string, clearGeneratedFields?: boolean) => Promise<void>) | null>(null);
   // Declare loadPatientsList function reference before fetchPatientData
   const loadPatientsListRef = useRef<((selectFirst?: boolean, newPatientId?: string | null) => Promise<void>) | null>(null);
 
@@ -121,13 +121,13 @@ export default function Home() {
 
 
    // Simulate Pre-Visit Agent: Fetches data for the selected patient
-   const fetchPatientData = useCallback(async (patientId: string) => {
+   const fetchPatientData = useCallback(async (patientId: string, clearGeneratedFields: boolean = true) => {
     // Prevent fetching if still on landing page or already fetching details
     if (showLandingPage || isFetchingPatientDetails) {
         console.log(`[fetchPatientData] Skipping fetch for ${patientId}. Conditions:`, { showLandingPage, isFetchingPatientDetails });
         return;
     }
-    console.log(`[fetchPatientData] Fetching data for patient: ${patientId}`); // Add log
+    console.log(`[fetchPatientData] Fetching data for patient: ${patientId}. Clear generated: ${clearGeneratedFields}`); // Add log
 
     setIsFetchingPatientDetails(true);
     // Clear previous patient's data but keep the main patient list
@@ -135,9 +135,12 @@ export default function Home() {
     setObservations([]);
     setEncounters([]);
     setPatientHistory('');
-    setTranscript('');
-    setSoapNote('');
-    setBillingCodes([]);
+    // Conditionally clear generated fields
+    if (clearGeneratedFields) {
+        setTranscript('');
+        setSoapNote('');
+        setBillingCodes([]);
+    }
 
     transitionAgentState('fetching_data');
     try {
@@ -226,7 +229,8 @@ export default function Home() {
              // Only fetch data if the selected ID is different from the currently selected patient
              // or if no patient is currently selected
              if (!selectedPatient || selectedPatient.id !== patientToSelectId) {
-                await fetchPatientDataRef.current(patientToSelectId); // Fetch details using the ref
+                // Always clear generated fields when selecting from the list
+                await fetchPatientDataRef.current(patientToSelectId, true);
              } else {
                  console.log(`[loadPatientsList] Patient ${patientToSelectId} is already selected. Skipping data fetch.`);
              }
@@ -282,7 +286,7 @@ export default function Home() {
     console.log(`[handleSelectPatient] called for ID: ${patientId}`); // Add log
     // Use the ref to call fetchPatientData
     if (fetchPatientDataRef.current) {
-        fetchPatientDataRef.current(patientId);
+        fetchPatientDataRef.current(patientId, true); // Clear generated fields on manual selection
     } else {
         console.error("fetchPatientData function reference not available yet.");
     }
@@ -370,6 +374,8 @@ export default function Home() {
       transitionAgentState('error'); // Transition to error if codes fail
     } finally {
       setIsGeneratingCodes(false);
+       // Ensure generating SOAP state is also reset when code generation finishes (success or error)
+      setIsGeneratingSoap(false);
     }
   }, [toast, transitionAgentState, showLandingPage, isMobile]); // Add isMobile
 
@@ -381,7 +387,8 @@ export default function Home() {
         toast({ title: 'Missing Information', description: 'Select a patient and ensure there is a transcript and history.', variant: 'destructive' });
         return;
     }
-    setIsGeneratingSoap(true);
+    setIsGeneratingSoap(true); // Set generating SOAP state
+    setIsGeneratingCodes(true); // Set generating codes state (as it follows SOAP)
     setSoapNote('');
     setBillingCodes([]);
     // Start the agent visualization flow: Generating SOAP -> Generating Codes
@@ -412,9 +419,8 @@ export default function Home() {
         setIsGeneratingSoap(false); // Ensure soap generation stops on error
         setIsGeneratingCodes(false); // Ensure code generation also stops if SOAP failed
         transitionAgentState('error'); // Transition to error if SOAP generation fails
-    } finally {
-        // setIsGeneratingSoap(false); // This is moved to inside handleGenerateBillingCodes success path
     }
+    // NOTE: No finally block needed here to reset states, handleGenerateBillingCodes handles it.
  }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState, showLandingPage, isMobile]); // Add isMobile
 
 
@@ -442,7 +448,7 @@ export default function Home() {
     try {
       // 1. Save the SOAP Note using postNote
       await postNote(selectedPatient.id, finalNote);
-      setSoapNote(finalNote); // Ensure saved note is reflected in UI state
+      // Don't update soapNote state here, let the refetch handle it to avoid potential mismatch if save fails partially
 
       // 2. Parse the note to extract data for Observation and Encounter
       const { assessment, objectiveSummary } = parseSoapNoteForData(finalNote);
@@ -482,10 +488,10 @@ export default function Home() {
       toast({ title: 'Note Saved', description: 'SOAP note, Encounter, and related Observation saved to EHR.' });
 
       // 6. Refetch patient data to show the updated encounters/observations
-      // Use the ref to call fetchPatientData
+      // Use the ref to call fetchPatientData, but DO NOT clear generated fields (SOAP/Codes)
       if (fetchPatientDataRef.current) {
           console.log("[handleSaveNote] Refetching patient data after save...");
-          await fetchPatientDataRef.current(selectedPatient.id);
+          await fetchPatientDataRef.current(selectedPatient.id, false); // Pass false to keep SOAP note
       } else {
           console.error("fetchPatientData function reference not available after save.");
       }
@@ -562,13 +568,13 @@ export default function Home() {
     // Case 1: No patient selected, but list is available -> select first one
     if (patients.length > 0 && !selectedPatient) {
         console.log("[useEffect selectionChange] No patient selected, selecting first.");
-        fetchPatientDataFn(patients[0].id);
+        fetchPatientDataFn(patients[0].id, true); // Clear generated fields
     }
     // Case 2: Selected patient exists but is no longer in the main list (e.g., deleted)
     else if (selectedPatient && !patients.find(p => p.id === selectedPatient.id)) {
         console.log("[useEffect selectionChange] Selected patient removed, selecting first or resetting.");
         if (patients.length > 0) {
-            fetchPatientDataFn(patients[0].id);
+            fetchPatientDataFn(patients[0].id, true); // Clear generated fields
         } else {
             resetAppState(); // No patients left, clear everything
         }
