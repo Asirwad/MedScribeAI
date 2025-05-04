@@ -14,7 +14,10 @@ import {
     getEncounters,
     postNote,
     createPatient,
-    getPatientsList // Import the new function to get all patients
+    getPatientsList, // Import the new function to get all patients
+    addObservation, // Import addObservation
+    addEncounter,   // Import addEncounter
+    getCurrentDateString, // Import date helper
 } from '@/services/ehr_client';
 import type { Patient, Observation, Encounter } from '@/services/ehr_client';
 import { generateSoapNote } from '@/ai/flows/generate-soap-note';
@@ -56,6 +59,11 @@ export default function Home() {
   const isMobile = useIsMobile(); // Check if mobile
 
   const { toast } = useToast();
+  // Declare fetchPatientData function reference before loadPatientsList
+  const fetchPatientDataRef = useRef<((patientId: string) => Promise<void>) | null>(null);
+  // Declare loadPatientsList function reference before fetchPatientData
+  const loadPatientsListRef = useRef<((selectFirst?: boolean, newPatientId?: string | null) => Promise<void>) | null>(null);
+
 
   // Helper function to manage agent state transitions with minimum display time
   const transitionAgentState = useCallback((newState: AgentState, nextState: AgentState | null = null) => {
@@ -110,11 +118,6 @@ export default function Home() {
           agentStateTimerRef.current = null;
       }
   }, []); // No dependencies needed here
-
-  // Declare fetchPatientData function reference before loadPatientsList
-  const fetchPatientDataRef = useRef<((patientId: string) => Promise<void>) | null>(null);
-  // Declare loadPatientsList function reference before fetchPatientData
-  const loadPatientsListRef = useRef<((selectFirst?: boolean, newPatientId?: string | null) => Promise<void>) | null>(null);
 
 
    // Simulate Pre-Visit Agent: Fetches data for the selected patient
@@ -186,7 +189,7 @@ export default function Home() {
       console.log(`[fetchPatientData] Finished fetching data attempt for patient: ${patientId}`); // Add log
     }
    // Removed loadPatientsList from dependencies, call via ref if needed. Added resetAppState
-   }, [toast, transitionAgentState, showLandingPage, isFetchingPatientDetails, resetAppState]);
+   }, [toast, transitionAgentState, showLandingPage, isFetchingPatientDetails, resetAppState]); // No loadPatientsListRef dependency needed
 
    // Assign the function to the ref after definition
    useEffect(() => {
@@ -210,16 +213,32 @@ export default function Home() {
              patientToSelectId = newPatientId; // Select the newly added patient if they exist in the list
          } else if (selectFirst && patientList.length > 0) {
              patientToSelectId = patientList[0].id; // Select the first patient if requested and list is not empty
+         } else if (selectedPatient && patientList.some(p => p.id === selectedPatient.id)) {
+             // Keep current selection if it still exists in the list and no other instruction was given
+             patientToSelectId = selectedPatient.id;
+         } else if (selectFirst && patientList.length === 0) {
+             // If selectFirst requested but list is empty
+             patientToSelectId = null;
          }
 
          if (patientToSelectId && fetchPatientDataRef.current) {
              console.log(`[loadPatientsList] Selecting patient: ${patientToSelectId}`);
-             await fetchPatientDataRef.current(patientToSelectId); // Fetch details using the ref
-         } else if (!newPatientId && patientList.length === 0) {
+             // Only fetch data if the selected ID is different from the currently selected patient
+             // or if no patient is currently selected
+             if (!selectedPatient || selectedPatient.id !== patientToSelectId) {
+                await fetchPatientDataRef.current(patientToSelectId); // Fetch details using the ref
+             } else {
+                 console.log(`[loadPatientsList] Patient ${patientToSelectId} is already selected. Skipping data fetch.`);
+             }
+         } else if (patientList.length === 0) {
              console.log("[loadPatientsList] No patients found, resetting app state.");
              resetAppState(); // Reset if no patients are available
          } else {
-              console.log("[loadPatientsList] No specific patient selected after loading.");
+              console.log("[loadPatientsList] No specific patient selected after loading list.");
+              // If no patient ID was determined to be selected (e.g., after deleting the last one), reset the state
+              if (!patientToSelectId) {
+                 resetAppState();
+              }
          }
 
      } catch (error) {
@@ -236,7 +255,7 @@ export default function Home() {
          console.log("[loadPatientsList] Fetch finished."); // Add log
      }
     // Only depends on resetAppState and toast now. fetchPatientData is called via ref.
-   }, [toast, isFetchingPatientList, resetAppState]);
+   }, [toast, isFetchingPatientList, resetAppState, selectedPatient]); // Added selectedPatient dependency
 
    // Assign the function to the ref after definition
    useEffect(() => {
@@ -394,13 +413,25 @@ export default function Home() {
         setIsGeneratingCodes(false); // Ensure code generation also stops if SOAP failed
         transitionAgentState('error'); // Transition to error if SOAP generation fails
     } finally {
-        setIsGeneratingSoap(false); // Ensure soap generation state is reset regardless of code generation outcome
+        // setIsGeneratingSoap(false); // This is moved to inside handleGenerateBillingCodes success path
     }
  }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState, showLandingPage, isMobile]); // Add isMobile
 
 
-  // Handler for saving the final note (EHR Agent)
-  const handleSaveNote = async (finalNote: string) => {
+ // Basic SOAP note parser (Improve this based on actual LLM output structure)
+ const parseSoapNoteForData = (note: string): { assessment: string | null; objectiveSummary: string | null } => {
+    const assessmentMatch = note.match(/Assessment:\s*([\s\S]*?)(Plan:|$)/i);
+    const objectiveMatch = note.match(/Objective:\s*([\s\S]*?)(Assessment:|$)/i);
+
+    const assessment = assessmentMatch ? assessmentMatch[1].trim().split('\n')[0] || 'Clinical Assessment' : 'Clinical Assessment'; // Take first line or default
+    const objectiveSummary = objectiveMatch ? objectiveMatch[1].trim().split('\n').slice(0, 2).join('. ') : null; // First few lines of Objective
+
+    return { assessment, objectiveSummary };
+ };
+
+
+ // Handler for saving the final note (EHR Agent)
+ const handleSaveNote = async (finalNote: string) => {
     if (!selectedPatient || showLandingPage) {
       // Always show no patient toast
       toast({ title: 'No Patient Selected', description: 'Cannot save note without a selected patient.', variant: 'destructive' });
@@ -409,17 +440,62 @@ export default function Home() {
     setIsSavingNote(true);
     transitionAgentState('saving');
     try {
-        // Use Firestore postNote function
+      // 1. Save the SOAP Note using postNote
       await postNote(selectedPatient.id, finalNote);
-      setSoapNote(finalNote); // Ensure saved note is reflected
+      setSoapNote(finalNote); // Ensure saved note is reflected in UI state
+
+      // 2. Parse the note to extract data for Observation and Encounter
+      const { assessment, objectiveSummary } = parseSoapNoteForData(finalNote);
+      const currentDate = getCurrentDateString();
+
+      // 3. Add a new Encounter record for this session
+      await addEncounter(selectedPatient.id, {
+          class: 'outpatient', // Or determine dynamically if possible
+          startDate: currentDate,
+          reason: assessment || 'Follow-up', // Use assessment as reason, or default
+          // endDate: currentDate // Optional: Set end date if known
+      });
+
+       // 4. Add a new Observation based on the note (optional, example: chief complaint or key finding)
+       // This part is highly dependent on what you want to extract and save.
+       // Example: Saving the primary assessment as an observation.
+      if (assessment) {
+          await addObservation(selectedPatient.id, {
+             code: 'ChiefComplaint', // Example code, adjust as needed
+             value: assessment,
+             date: currentDate,
+             // units: undefined // No units for complaint
+           });
+      }
+      // Example: Saving a summary of objective findings (if available)
+      // if (objectiveSummary) {
+      //    await addObservation(selectedPatient.id, {
+      //       code: 'ObjectiveSummary',
+      //       value: objectiveSummary,
+      //       date: currentDate,
+      //    });
+      // }
+
+
+      // 5. Show success toast
       // Always show save success toast
-      toast({ title: 'Note Saved', description: 'SOAP note successfully submitted to EHR.' });
-      transitionAgentState('saving', 'idle');
+      toast({ title: 'Note Saved', description: 'SOAP note, Encounter, and related Observation saved to EHR.' });
+
+      // 6. Refetch patient data to show the updated encounters/observations
+      // Use the ref to call fetchPatientData
+      if (fetchPatientDataRef.current) {
+          console.log("[handleSaveNote] Refetching patient data after save...");
+          await fetchPatientDataRef.current(selectedPatient.id);
+      } else {
+          console.error("fetchPatientData function reference not available after save.");
+      }
+
+       transitionAgentState('saving', 'idle');
 
     } catch (error) {
-      console.error('Error saving note:', error);
+      console.error('Error saving note or related records:', error);
        // Always show save failed toast
-      toast({ title: 'Save Failed', description: 'Could not save the note to EHR.', variant: 'destructive' });
+      toast({ title: 'Save Failed', description: 'Could not save the note or related records to EHR.', variant: 'destructive' });
        transitionAgentState('error');
     } finally {
       setIsSavingNote(false);
@@ -606,5 +682,3 @@ export default function Home() {
      </>
   );
 }
-
-    

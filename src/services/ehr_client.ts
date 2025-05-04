@@ -161,22 +161,24 @@ export async function getPatientsList(): Promise<Patient[]> {
  * Asynchronously retrieves patient data from Firestore.
  *
  * @param patientId The ID of the patient to retrieve.
- * @returns A promise that resolves to a Patient object or throws an error if not found.
+ * @returns A promise that resolves to a Patient object or null if not found or on error.
  */
-export async function getPatient(patientId: string): Promise<Patient> {
+export async function getPatient(patientId: string): Promise<Patient | null> {
     // await delay(150); // Optional delay
     try {
         const docRef = doc(db, 'patients', patientId);
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-            throw new Error(`Patient with ID ${patientId} not found in Firestore.`);
+            console.warn(`[EHR Client] Patient with ID ${patientId} not found in Firestore.`);
+            return null; // Return null if not found
         }
         console.log(`[EHR Client] Fetched patient: ${patientId} from Firestore.`);
         return { id: docSnap.id, ...docSnap.data() } as Patient;
     } catch (error) {
         console.error(`Error fetching patient ${patientId}:`, error);
-        throw new Error(`Failed to fetch patient ${patientId} from Firestore.`);
+        // Return null on error instead of throwing
+        return null;
     }
 }
 
@@ -281,4 +283,66 @@ export async function createPatient(patientData: Omit<Patient, 'id'>): Promise<P
         console.error('Error creating patient in Firestore:', error);
         throw new Error('Failed to create patient in Firestore.');
     }
+}
+
+
+/**
+ * Asynchronously adds a new observation for a patient to Firestore.
+ *
+ * @param patientId The ID of the patient the observation belongs to.
+ * @param observationData Data for the new observation (code, value, units, date).
+ * @returns A promise that resolves to the newly created Observation object (including its Firestore ID).
+ * @throws An error if adding the document fails.
+ */
+export async function addObservation(
+    patientId: string,
+    observationData: Omit<Observation, 'id' | 'patientId'>
+): Promise<Observation> {
+    try {
+        const docRef = await addDoc(observationsCollection, {
+            ...observationData,
+            patientId: patientId,
+            // recordedAt: serverTimestamp(), // Optional: Use server timestamp for recorded time
+        });
+        console.log(`[EHR Client] Added observation with ID: ${docRef.id} for patient ${patientId}. Code: ${observationData.code}`);
+        return { ...observationData, patientId, id: docRef.id };
+    } catch (error) {
+        console.error(`Error adding observation for patient ${patientId}:`, error);
+        throw new Error(`Failed to add observation for patient ${patientId} to Firestore.`);
+    }
+}
+
+/**
+ * Asynchronously adds a new encounter for a patient to Firestore.
+ *
+ * @param patientId The ID of the patient the encounter belongs to.
+ * @param encounterData Data for the new encounter (class, startDate, endDate, reason).
+ * @returns A promise that resolves to the newly created Encounter object (including its Firestore ID).
+ * @throws An error if adding the document fails.
+ */
+export async function addEncounter(
+    patientId: string,
+    encounterData: Omit<Encounter, 'id' | 'patientId'>
+): Promise<Encounter> {
+    try {
+        const docRef = await addDoc(encountersCollection, {
+            ...encounterData,
+            patientId: patientId,
+            // startedAt: serverTimestamp(), // Optional: Use server timestamp
+        });
+        console.log(`[EHR Client] Added encounter with ID: ${docRef.id} for patient ${patientId}. Class: ${encounterData.class}`);
+        return { ...encounterData, patientId, id: docRef.id };
+    } catch (error) {
+        console.error(`Error adding encounter for patient ${patientId}:`, error);
+        throw new Error(`Failed to add encounter for patient ${patientId} to Firestore.`);
+    }
+}
+
+// Helper function to get current date in YYYY-MM-DD format
+export function getCurrentDateString(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
