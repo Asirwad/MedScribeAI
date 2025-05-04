@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 import { cn } from '@/lib/utils'; // Import cn
+import { format, parseISO } from 'date-fns'; // Import date-fns for formatting
 
 interface PatientSummaryProps {
   patient: Patient | null;
@@ -13,6 +14,55 @@ interface PatientSummaryProps {
   encounters: Encounter[];
   isLoading: boolean; // Add isLoading prop
 }
+
+// Helper function to format date strings (YYYY-MM-DD or ISO) into a readable format
+const formatDate = (dateString: string | undefined): string => {
+  if (!dateString) return 'N/A';
+  try {
+    // Attempt to parse as ISO string first (which includes YYYY-MM-DD)
+    const date = parseISO(dateString);
+    // Check if the date is valid after parsing
+    if (isNaN(date.getTime())) {
+       // Fallback for potentially malformed dates, return original string
+       console.warn(`Invalid date string encountered: ${dateString}`);
+       return dateString;
+    }
+    return format(date, 'MM/dd/yyyy'); // Format as MM/DD/YYYY
+  } catch (error) {
+    console.error(`Error formatting date: ${dateString}`, error);
+    return dateString; // Return original string on error
+  }
+};
+
+
+// Mapping for common observation codes to readable names
+const observationCodeMap: { [key: string]: string } = {
+  'blood_pressure': 'Blood Pressure',
+  'heart_rate': 'Heart Rate',
+  'body_temperature': 'Temperature',
+  'respiratory_rate': 'Respiratory Rate',
+  'oxygen_saturation': 'Oxygen Saturation',
+  'ChiefComplaint': 'Chief Complaint', // Added from saveNote
+  'ObjectiveSummary': 'Objective Findings', // Added from saveNote
+  // Add more mappings as needed
+};
+
+// Mapping for encounter classes
+const encounterClassMap: { [key: string]: string } = {
+    'inpatient': 'Inpatient Stay',
+    'outpatient': 'Outpatient Visit',
+    'ambulatory': 'Ambulatory Visit',
+    'emergency': 'Emergency Visit',
+    'home': 'Home Health Visit',
+    'virtual': 'Virtual Visit',
+    // Add more mappings as needed
+};
+
+// Helper to get readable name or fallback to original code/class
+const getReadableName = (code: string, map: { [key: string]: string }): string => {
+    return map[code] || code; // Return mapped name or original code if not found
+};
+
 
 export function PatientSummary({ patient, observations, encounters, isLoading }: PatientSummaryProps) {
   if (isLoading) {
@@ -67,6 +117,10 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
     );
   }
 
+  // Format patient DOB
+  const formattedDOB = formatDate(patient.dateOfBirth);
+
+
   return (
     // Apply glassmorphism to main card
     <Card className={cn(
@@ -75,7 +129,8 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
       <CardHeader>
         <CardTitle>{patient.name}</CardTitle>
         <CardDescription>
-          ID: {patient.id} | DOB: {patient.dateOfBirth} | Gender: {patient.gender}
+          {/* Use formatted DOB */}
+          ID: {patient.id} | DOB: {formattedDOB} | Gender: {patient.gender}
         </CardDescription>
       </CardHeader>
       <Separator className="my-2 bg-border/50" /> {/* Make separator semi-transparent */}
@@ -88,7 +143,8 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
               <ul className="space-y-1 text-sm text-foreground/90"> {/* Slightly adjust text opacity */}
                 {observations.map((obs) => (
                   <li key={obs.id}>
-                    <strong className="font-medium">{obs.code}:</strong> {obs.value} {obs.units} ({new Date(obs.date).toLocaleDateString()})
+                    {/* Use readable name for code and format date */}
+                    <strong className="font-medium">{getReadableName(obs.code, observationCodeMap)} ({formatDate(obs.date)}):</strong> {obs.value}{obs.units ? ` ${obs.units}` : ''}
                   </li>
                 ))}
               </ul>
@@ -105,7 +161,8 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
                 <ul className="space-y-1 text-sm text-foreground/90"> {/* Slightly adjust text opacity */}
                   {encounters.map((enc) => (
                     <li key={enc.id}>
-                      <strong className="font-medium">{new Date(enc.startDate).toLocaleDateString()}:</strong> {enc.class} - {enc.reason || 'N/A'}
+                       {/* Use readable name for class and format date */}
+                      <strong className="font-medium">{formatDate(enc.startDate)}:</strong> {getReadableName(enc.class, encounterClassMap)}{enc.reason ? ` - ${enc.reason}` : ''}
                     </li>
                   ))}
                 </ul>
