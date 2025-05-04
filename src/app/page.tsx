@@ -18,6 +18,7 @@ import { RefreshCw, Brain } from 'lucide-react';
 import { AddPatientForm } from '@/components/add-patient-form';
 import { AgentVisualizationOverlay, AgentState } from '@/components/agent-visualization-overlay';
 import { LandingPage } from '@/components/landing-page'; // Import the LandingPage component
+import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 
 // Minimum time (in ms) to display each agent state in the overlay
 const MIN_AGENT_STATE_DISPLAY_TIME = 1500;
@@ -42,6 +43,7 @@ export default function Home() {
   const agentStateTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isListening, setIsListening] = useState<boolean>(false);
   const [isSidebarInitiallyOpen, setIsSidebarInitiallyOpen] = useState(false); // Control initial sidebar state after landing
+  const isMobile = useIsMobile(); // Check if mobile
 
   const { toast } = useToast();
 
@@ -176,6 +178,7 @@ export default function Home() {
  const handleAudioBlob = useCallback(async (audioBlob: Blob) => {
     if (!selectedPatient || showLandingPage) return;
     if (audioBlob.size === 0) {
+        // Always show empty audio toast
         toast({ title: "Empty Audio", description: "No audio data was captured.", variant: "default" });
         setIsTranscribing(false);
         setIsListening(false);
@@ -198,17 +201,21 @@ export default function Home() {
 
       const result = await transcribePatientEncounter({ audioDataUri: base64Audio });
       handleTranscriptionResult(result.transcript);
-      toast({ title: "Transcription Segment Processed", description: "Transcript updated." });
-       transitionAgentState('transcribing', 'idle');
+      // Show transcription success toast only on non-mobile
+      if (!isMobile) {
+          toast({ title: "Transcription Segment Processed", description: "Transcript updated." });
+      }
+      transitionAgentState('transcribing', 'idle');
 
     } catch (error) {
       console.error("Transcription failed:", error);
+      // Always show error toast
       toast({ title: "Transcription Error", description: "Failed to process audio segment.", variant: "destructive" });
       transitionAgentState('error');
     } finally {
       setIsTranscribing(false);
     }
- }, [selectedPatient, handleTranscriptionResult, toast, transitionAgentState, showLandingPage]);
+ }, [selectedPatient, handleTranscriptionResult, toast, transitionAgentState, showLandingPage, isMobile]); // Add isMobile
 
 
  // Handler for generating billing codes (Documentation Agent - Step 2)
@@ -219,22 +226,27 @@ export default function Home() {
     try {
       const result = await generateBillingCodes({ soapNote: noteToCode });
       setBillingCodes(Array.isArray(result.billingCodes) ? result.billingCodes : []);
-      toast({ title: 'Billing Codes Suggested', description: 'Codes are displayed below.' });
+      // Show codes suggested toast only on non-mobile
+       if (!isMobile) {
+         toast({ title: 'Billing Codes Suggested', description: 'Codes are displayed below.' });
+       }
       transitionAgentState('generating_codes', 'idle');
 
     } catch (error) {
       console.error('Error generating billing codes:', error);
+      // Always show error toast
       toast({ title: 'Code Suggestion Failed', description: 'Could not suggest billing codes.', variant: 'destructive' });
       transitionAgentState('error');
     } finally {
       setIsGeneratingCodes(false);
     }
-  }, [toast, transitionAgentState, showLandingPage]);
+  }, [toast, transitionAgentState, showLandingPage, isMobile]); // Add isMobile
 
 
  // Handler for generating SOAP note (Documentation Agent - Step 1)
  const handleGenerateSoapNote = useCallback(async () => {
     if (!selectedPatient || !transcript || !patientHistory || showLandingPage) {
+        // Always show missing info toast
         toast({ title: 'Missing Information', description: 'Select a patient and ensure there is a transcript and history.', variant: 'destructive' });
         return;
     }
@@ -251,7 +263,10 @@ export default function Home() {
         });
 
         setSoapNote(result.soapNote);
-        toast({ title: 'SOAP Note Generated', description: 'Review and edit the note below. Generating codes...' });
+        // Show SOAP generated toast only on non-mobile
+        if (!isMobile) {
+            toast({ title: 'SOAP Note Generated', description: 'Review and edit the note below. Generating codes...' });
+        }
 
         // Now call handleGenerateBillingCodes
         await handleGenerateBillingCodes(result.soapNote);
@@ -259,6 +274,7 @@ export default function Home() {
 
     } catch (error) {
         console.error('Error generating SOAP note:', error);
+         // Always show error toast
         toast({ title: 'SOAP Generation Failed', description: 'Could not generate SOAP note.', variant: 'destructive' });
         setIsGeneratingSoap(false); // Ensure soap generation stops on error
         setIsGeneratingCodes(false); // Ensure code generation also stops
@@ -266,12 +282,13 @@ export default function Home() {
     } finally {
         setIsGeneratingSoap(false); // Ensure soap generation state is reset even if codes are generating
     }
- }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState, showLandingPage]);
+ }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState, showLandingPage, isMobile]); // Add isMobile
 
 
   // Handler for saving the final note (EHR Agent)
   const handleSaveNote = async (finalNote: string) => {
     if (!selectedPatient || showLandingPage) {
+      // Always show no patient toast
       toast({ title: 'No Patient Selected', description: 'Cannot save note without a selected patient.', variant: 'destructive' });
       return;
     }
@@ -280,11 +297,13 @@ export default function Home() {
     try {
       await postNote(selectedPatient.id, finalNote);
       setSoapNote(finalNote);
+      // Always show save success toast
       toast({ title: 'Note Saved', description: 'SOAP note successfully submitted to EHR.' });
       transitionAgentState('saving', 'idle');
 
     } catch (error) {
       console.error('Error saving note:', error);
+       // Always show save failed toast
       toast({ title: 'Save Failed', description: 'Could not save the note to EHR.', variant: 'destructive' });
        transitionAgentState('error');
     } finally {
@@ -295,6 +314,11 @@ export default function Home() {
   // Handler for adding a new patient via the form
   const handlePatientAdded = (newPatient: Patient) => {
     setPatients(prevPatients => [...prevPatients, newPatient]);
+    // Always show patient added toast
+     toast({
+        title: 'Patient Added',
+        description: `${newPatient.name} has been added successfully.`,
+      });
     // Automatically select and fetch data for the newly added patient
     // only if not on the landing page anymore
     if (!showLandingPage) {

@@ -9,6 +9,7 @@ import { Mic, StopCircle, Loader2 } from 'lucide-react'; // Correct icons
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils'; // Import cn for conditional classes
 import { RecordingOverlay } from '@/components/recording-overlay'; // Import the new overlay
+import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 
 interface LiveTranscriptionProps {
   onManualTranscriptChange: (transcript: string) => void;
@@ -33,6 +34,7 @@ export function LiveTranscription({
   const audioChunksRef = useRef<Blob[]>([]);
   const [recordingStartTime, setRecordingStartTime] = useState<Date | null>(null); // State for start time
   const { toast } = useToast();
+  const isMobile = useIsMobile(); // Check if mobile
 
   // Function to handle starting recording
   const startRecording = async () => {
@@ -51,9 +53,13 @@ export function LiveTranscription({
       mediaRecorderRef.current.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' }); // Ensure correct type
         if (audioBlob.size > 0) {
-          //  toast({ title: "Recording Stopped", description: "Processing audio..." });
+           // Don't show "Processing audio" toast on mobile
+           // if (!isMobile) {
+           //   toast({ title: "Recording Stopped", description: "Processing audio..." });
+           // }
            onAudioBlob(audioBlob); // Send blob to parent
         } else {
+            // Always show empty audio toast
             toast({ title: "Recording Stopped", description: "No audio data captured.", variant: "default" }); // Use default variant
         }
 
@@ -66,7 +72,10 @@ export function LiveTranscription({
       mediaRecorderRef.current.start();
       setIsListening(true); // Update parent state
       setRecordingStartTime(new Date()); // Set start time
-      // toast({ title: "Recording Started", description: "Microphone is active." });
+       // Don't show "Recording Started" toast on mobile
+      // if (!isMobile) {
+      //   toast({ title: "Recording Started", description: "Microphone is active." });
+      // }
 
     } catch (err) {
       console.error('Error accessing microphone:', err);
@@ -78,6 +87,7 @@ export function LiveTranscription({
       } else if (err instanceof Error && err.message.includes('mimeType')) {
           description = "Audio recording format (webm) might not be supported by your browser.";
       }
+       // Always show error toast
       toast({ title: "Microphone Error", description: description, variant: "destructive" });
       setIsListening(false); // Update parent state
       setRecordingStartTime(null); // Clear start time
@@ -89,7 +99,10 @@ export function LiveTranscription({
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
       // Status message set in onstop handler
-      toast({ title: "Stopping Recording...", description: "Please wait." }); // Indicate stopping
+      // Don't show "Stopping Recording" toast on mobile
+      // if (!isMobile) {
+      //   toast({ title: "Stopping Recording...", description: "Please wait." }); // Indicate stopping
+      // }
     }
      // If stopped manually before any data, ensure listening state is updated
      // This might be redundant due to onstop, but ensures state consistency

@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 
 const patientFormSchema = z.object({
   name: z.string().min(2, {
@@ -57,6 +58,7 @@ interface AddPatientFormProps {
 export function AddPatientForm({ isOpen, onOpenChange, onPatientAdded }: AddPatientFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile(); // Check if mobile
 
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientFormSchema),
@@ -71,15 +73,16 @@ export function AddPatientForm({ isOpen, onOpenChange, onPatientAdded }: AddPati
     setIsSubmitting(true);
     try {
       const newPatient = await createPatient(data);
-      onPatientAdded(newPatient);
-      toast({
-        title: 'Patient Added',
-        description: `${newPatient.name} has been added successfully.`,
-      });
+      onPatientAdded(newPatient); // Let parent handle the toast based on mobile state
+      // toast({ // Removed from here
+      //   title: 'Patient Added',
+      //   description: `${newPatient.name} has been added successfully.`,
+      // });
       form.reset(); // Reset form after successful submission
       onOpenChange(false); // Close the dialog
     } catch (error) {
       console.error('Error adding patient:', error);
+      // Always show error toast
       toast({
         title: 'Error Adding Patient',
         description: 'Could not add the patient. Please try again.',
