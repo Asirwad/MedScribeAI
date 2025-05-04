@@ -50,7 +50,7 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
             <a href="/" className="mr-6 flex items-center space-x-2">
               {/* Replace with your logo or icon */}
               <Bot className="h-6 w-6 text-primary" />
-              <span className="font-bold text-primary">MediScribeAI</span>
+              <span className="font-bold text-primary">MedScribeAI</span> {/* Renamed */}
             </a>
           </div>
           {/* Optional: Add Nav links if needed */}
@@ -78,7 +78,7 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
             <motion.p
               variants={slideUp}
               className="max-w-3xl text-lg text-muted-foreground sm:text-xl"> {/* Increased max-width */}
-              MediScribeAI uses a multi-agent system to automate pre-visit prep, live scribing, and post-visit documentation, freeing clinicians to focus on patient care.
+              MedScribeAI uses a multi-agent system to automate pre-visit prep, live scribing, and post-visit documentation, freeing clinicians to focus on patient care. {/* Renamed */}
             </motion.p>
           </div>
           <motion.div variants={slideUp} className="flex gap-4">
@@ -100,9 +100,9 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
           variants={staggerContainer}
           className="container mx-auto space-y-6 bg-secondary py-12 md:py-16 lg:py-24 rounded-lg shadow-inner px-4 sm:px-6 lg:px-8"> {/* Added padding */}
           <div className="mx-auto flex max-w-4xl flex-col items-center space-y-4 text-center"> {/* Increased max-width */}
-            <motion.h2 variants={slideUp} className="font-bold text-3xl leading-[1.1] sm:text-4xl md:text-5xl text-secondary-foreground">About MediScribeAI</motion.h2>
+            <motion.h2 variants={slideUp} className="font-bold text-3xl leading-[1.1] sm:text-4xl md:text-5xl text-secondary-foreground">About MedScribeAI</motion.h2> {/* Renamed */}
             <motion.p variants={slideUp} className="max-w-3xl leading-normal text-muted-foreground sm:text-lg sm:leading-7"> {/* Increased max-width */}
-              Built for the modern clinical workflow, MediScribeAI leverages cutting-edge AI to reduce administrative burden. Our application integrates seamlessly with simulated EHR data (FHIR-based) to provide a realistic demonstration of an agentic documentation assistant. We prioritize efficiency, accuracy, and user experience, all within a secure, compliant framework (simulated).
+              Built for the modern clinical workflow, MedScribeAI leverages cutting-edge AI to reduce administrative burden. Our application integrates seamlessly with simulated EHR data (FHIR-based) to provide a realistic demonstration of an agentic documentation assistant. We prioritize efficiency, accuracy, and user experience, all within a secure, compliant framework (simulated). {/* Renamed */}
             </motion.p>
              <motion.div variants={slideUp}>
                  <Image
@@ -128,7 +128,7 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
           <div className="mx-auto flex max-w-4xl flex-col items-center space-y-4 text-center"> {/* Increased max-width */}
             <motion.h2 variants={slideUp} className="font-bold text-3xl leading-[1.1] sm:text-4xl md:text-5xl text-foreground">How It Works: The Multi-Agent Workflow</motion.h2>
             <motion.p variants={slideUp} className="max-w-3xl leading-normal text-muted-foreground sm:text-lg sm:leading-7"> {/* Increased max-width */}
-              MediScribeAI employs specialized AI agents collaborating through a defined workflow to handle different stages of clinical documentation.
+              MedScribeAI employs specialized AI agents collaborating through a defined workflow to handle different stages of clinical documentation. {/* Renamed */}
             </motion.p>
           </div>
           <motion.div
@@ -206,7 +206,7 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
          className="py-6 md:px-8 md:py-0 border-t border-border/40 mt-12"> {/* Added margin-top */}
         <div className="container mx-auto flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row px-4 sm:px-6 lg:px-8"> {/* Added padding */}
           <p className="text-balance text-center text-sm leading-loose text-muted-foreground md:text-left">
-            Built by <a href="https://ust.com" target="_blank" rel="noreferrer" className="font-medium underline underline-offset-4 text-primary hover:text-primary/80">Team MediScribe</a> for the Hackathon.
+            Built by <a href="https://ust.com" target="_blank" rel="noreferrer" className="font-medium underline underline-offset-4 text-primary hover:text-primary/80">Team MedScribe</a> for the Hackathon. {/* Renamed */}
             Powered by AI.
           </p>
         </div>

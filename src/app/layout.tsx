@@ -10,7 +10,7 @@ const openSans = Open_Sans({ // Configure Open Sans
 });
 
 export const metadata: Metadata = {
-  title: 'MediScribeAI',
+  title: 'MedScribeAI', // Renamed from MediScribeAI
   description: 'Agentic Clinical Documentation Assistant',
 };
 
