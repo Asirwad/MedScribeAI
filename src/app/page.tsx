@@ -85,16 +85,11 @@ export default function Home() {
     setPatients(initialPatients);
   }, []);
 
-
-  // Simulate Pre-Visit Agent: Fetches data for the selected patient
-  const fetchPatientData = useCallback(async (patientId: string) => {
-    // Prevent fetching if still on landing page
-    if (showLandingPage) return;
-
-    setIsFetchingData(true);
-    transitionAgentState('fetching_data');
-    try {
-      // Reset state for the new patient
+  // Reset application state for a new patient or when returning to landing page
+  const resetAppState = useCallback(() => {
+      setSelectedPatient(null);
+      setObservations([]);
+      setEncounters([]);
       setTranscript('');
       setSoapNote('');
       setBillingCodes([]);
@@ -104,7 +99,23 @@ export default function Home() {
       setIsTranscribing(false);
       setPatientHistory('');
       setIsListening(false);
+      setAgentState('idle');
+      if (agentStateTimerRef.current) {
+          clearTimeout(agentStateTimerRef.current);
+          agentStateTimerRef.current = null;
+      }
+  }, []);
 
+
+  // Simulate Pre-Visit Agent: Fetches data for the selected patient
+  const fetchPatientData = useCallback(async (patientId: string) => {
+    // Prevent fetching if still on landing page
+    if (showLandingPage) return;
+
+    setIsFetchingData(true);
+    resetAppState(); // Reset state before fetching new patient data
+    transitionAgentState('fetching_data');
+    try {
       const [patientData, obsData, encData] = await Promise.all([
         getPatient(patientId),
         getObservations(patientId),
@@ -131,15 +142,12 @@ export default function Home() {
         description: 'Could not load patient details.',
         variant: 'destructive',
       });
-      setSelectedPatient(null);
-      setObservations([]);
-      setEncounters([]);
-      setPatientHistory('');
+      resetAppState(); // Reset state on error
       transitionAgentState('error');
     } finally {
       setIsFetchingData(false);
     }
-  }, [toast, transitionAgentState, showLandingPage]); // Added showLandingPage
+  }, [toast, transitionAgentState, showLandingPage, resetAppState]); // Added showLandingPage, resetAppState
 
 
   const handleSelectPatient = (patientId: string) => {
@@ -246,16 +254,18 @@ export default function Home() {
         setSoapNote(result.soapNote);
         toast({ title: 'SOAP Note Generated', description: 'Review and edit the note below. Generating codes...' });
 
+        // Now call handleGenerateBillingCodes
         await handleGenerateBillingCodes(result.soapNote);
+
 
     } catch (error) {
         console.error('Error generating SOAP note:', error);
         toast({ title: 'SOAP Generation Failed', description: 'Could not generate SOAP note.', variant: 'destructive' });
-        setIsGeneratingSoap(false);
-        setIsGeneratingCodes(false);
+        setIsGeneratingSoap(false); // Ensure soap generation stops on error
+        setIsGeneratingCodes(false); // Ensure code generation also stops
         transitionAgentState('error');
     } finally {
-        setIsGeneratingSoap(false);
+        setIsGeneratingSoap(false); // Ensure soap generation state is reset even if codes are generating
     }
  }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState, showLandingPage]);
 
@@ -299,6 +309,12 @@ export default function Home() {
       setIsSidebarInitiallyOpen(true); // Trigger sidebar open
    };
 
+   // Handle returning to the landing page
+   const handleReturnToLanding = useCallback(() => {
+     resetAppState(); // Clear patient data etc.
+     setShowLandingPage(true);
+   }, [resetAppState]);
+
   // Effect to handle patient selection changes after landing page is dismissed
   useEffect(() => {
     // If we just exited the landing page AND have patients, select the first one
@@ -334,6 +350,7 @@ export default function Home() {
       onSelectPatient={handleSelectPatient}
       onAddPatient={() => setIsAddPatientDialogOpen(true)}
       initialSidebarOpen={isSidebarInitiallyOpen} // Pass the initial state
+      onReturnToLanding={handleReturnToLanding} // Pass the return function
     >
         <div className="flex-1 p-4 md:p-6 relative pb-24 overflow-auto">
             <div className="max-w-4xl mx-auto space-y-6">
@@ -354,7 +371,7 @@ export default function Home() {
                 setIsListening={setIsListening}
             />
 
-            {transcript && selectedPatient && !isListening && (
+            {transcript && selectedPatient && !isListening && !isGeneratingSoap && !isGeneratingCodes && !isSavingNote && !isTranscribing && !isFetchingData && (
                 <div className="flex justify-end">
                 <Button
                     onClick={handleGenerateSoapNote}
