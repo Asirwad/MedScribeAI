@@ -87,26 +87,26 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
       {/* Main Content */}
       <main className="flex-1">
 
-        {/* Hero Section - ScribeMD Inspired */}
+        {/* Hero Section - ScribeMD Inspired - Centered */}
         <motion.section
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
-          className="relative container mx-auto flex flex-col lg:flex-row items-center justify-between gap-12 px-4 py-20 text-center lg:text-left md:py-28 lg:py-36 sm:px-6 lg:px-8">
+          className="relative container mx-auto flex flex-col items-center justify-center gap-12 px-4 py-20 text-center md:py-28 lg:py-36 sm:px-6 lg:px-8">
 
-          {/* Text Content */}
-          <motion.div variants={slideInLeft} className="lg:w-1/2 xl:w-2/5 space-y-6">
+          {/* Text Content - Centered */}
+          <motion.div variants={slideUp} className="max-w-3xl space-y-6"> {/* Use max-w for text block */}
              {/* Optional: Badge */}
-             {/* <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-primary mb-4 dark:bg-blue-900/30 dark:text-blue-300">
+             <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-primary mb-4 dark:bg-blue-900/30 dark:text-blue-300">
                 Ambient AI Medical Scribe
-             </span> */}
+             </span>
             <h1 className="text-4xl font-bold leading-tight tracking-tighter sm:text-5xl md:text-6xl lg:text-6xl text-foreground">
               Focus on Patients, <br className="hidden sm:block"/> Not on Your Keyboard.
             </h1>
-            <p className="max-w-xl mx-auto lg:mx-0 text-base text-muted-foreground sm:text-lg md:text-xl">
+            <p className="max-w-xl mx-auto text-base text-muted-foreground sm:text-lg md:text-xl"> {/* Centered paragraph */}
                MedScribeAI uses ambient AI to listen, transcribe, and generate accurate clinical notes in real-time, directly integrated with your workflow.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center"> {/* Centered buttons */}
               <Button onClick={onEnterApp} size="lg" className="rounded-md px-8 py-3 text-base">
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -116,26 +116,27 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
               </Button> */}
             </div>
              {/* Optional: Trust indicators */}
-             {/* <div className="pt-4 text-xs text-muted-foreground flex items-center justify-center lg:justify-start gap-2">
+             <div className="pt-1 text-xs text-muted-foreground flex items-center justify-center gap-2"> {/* Centered indicators */}
                <ShieldCheck className="h-4 w-4 text-green-600" />
                <span>HIPAA Compliant (Simulated)</span>
-             </div> */}
+             </div>
           </motion.div>
 
-          {/* Image/Illustration */}
-           <motion.div variants={slideInRight} className="lg:w-1/2 mt-10 lg:mt-0">
+          {/* Image/Illustration - Centered and Smaller */}
+           <motion.div variants={fadeIn} className="w-full mt-10"> {/* Fade in animation */}
              <Image
                data-ai-hint="doctor patient interaction modern illustration medical ai"
-               src="https://picsum.photos/600/450" // Placeholder image
+               src="https://www.scribemd.ai/assets/new_hero-86ac943aebdbd5be8d6318cf384a04b227882cca5e3243bae78aacb277050800.svg" // Placeholder image
                alt="MedScribeAI in action"
-               width={600}
-               height={450}
-               className="rounded-lg shadow-xl mx-auto w-full max-w-2xl h-auto border border-border/20"
-               priority // Load hero image faster
+               width={300}
+               height={225}
+               // Reduced max-width, kept centering
+               className="rounded-lg shadow-none mx-auto w-full max-w-xl h-auto border border-border/20"
+               priority
              />
            </motion.div>
 
-            {/* Optional subtle background gradient */}
+            {/* Optional subtle background gradient remains */}
             {/* <div className="absolute inset-0 -z-10 overflow-hidden">
               <div className="absolute left-1/3 top-0 h-[40rem] w-[60rem] -translate-x-1/2 rounded-full bg-gradient-to-tr from-primary/10 via-transparent to-transparent opacity-20 blur-3xl" />
             </div> */}
