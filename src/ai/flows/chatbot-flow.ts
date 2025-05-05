@@ -14,7 +14,7 @@ import type { GenerateResponse } from 'genkit'; // Import GenerateResponse type
 
 // Define the structure for a single chat message
 const ChatMessageSchema = z.object({
-  role: z.enum(['user', 'model']), // 'model' for AI responses
+  role: z.enum(['user', 'model'] as const), // 'model' for AI responses
   content: z.string(),
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
@@ -81,95 +81,56 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
   {
     name: 'chatbotFlow',
     inputSchema: ChatInputSchema,
-    outputSchema: ChatOutputSchema, // Flow ensures output matches this schema
+    outputSchema: ChatOutputSchema,
   },
   async (input) => {
     console.log("[chatbotFlow] Flow entered with input:", JSON.stringify(input, null, 2));
 
     try {
-      // Manually construct the messages array for ai.generate
-      // The structure should be compatible with the underlying model's API.
-      // For Gemini, it expects an array of { role: 'user' | 'model', parts: [{ text: '...' }] }
-      const messagesForAI: { role: 'user' | 'model'; content: { text: string }[] }[] = [];
+      // Construct messages in the correct format for Gemini
+      const messagesForAI: Array<{role: 'user' | 'model', parts: {text: string}[]}> = [];
 
       // Add history messages
       if (input.history) {
         input.history.forEach(msg => {
-          // Make sure role matches 'user' or 'model'
-          if (msg.role === 'user' || msg.role === 'model') {
-              messagesForAI.push({
-                role: msg.role,
-                content: [{ text: msg.content }] // Gemini format: parts is an array
-              });
-          }
+          // Gemini expects 'user' or 'model' roles, but in their format it's 'user' or 'model'
+          const role = msg.role === 'user' ? 'user' : 'model';
+          messagesForAI.push({
+            role: role as 'user' | 'model', // Type assertion
+            parts: [{ text: msg.content }]
+          });
         });
       }
 
       // Add the current user message
       messagesForAI.push({
         role: 'user',
-        content: [{ text: input.message }] // Gemini format
+        parts: [{ text: input.message }]
       });
 
       console.log("[chatbotFlow] Calling ai.generate with messages:", JSON.stringify(messagesForAI, null, 2));
 
-      // Call ai.generate directly
-      // Genkit's ai.generate should handle the mapping to the Google AI API format
+      // Call ai.generate
       const modelResponse = await ai.generate({
-        // Use the default model configured in ai-instance.ts ('googleai/gemini-2.0-flash')
-        prompt: messagesForAI, // Pass the constructed message history
+        prompt: messagesForAI,
         system: `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice.`,
-        output: { format: 'text' }, // Explicitly request text format
-        config: {
-            // Potentially add temperature or other generation configs here if needed
-            // temperature: 0.7
-        },
+        output: { format: 'text' },
       });
 
-
-      // == Detailed Logging Added ==
-      console.log("[chatbotFlow] Raw response object from ai.generate:", JSON.stringify(modelResponse, null, 2));
-      console.log("[chatbotFlow] modelResponse.text:", modelResponse?.text);
-      try {
-        console.log("[chatbotFlow] modelResponse.output (stringified):", JSON.stringify(modelResponse?.output, null, 2));
-      } catch (e) {
-         console.error("[chatbotFlow] Failed to stringify modelResponse.output:", e);
-         console.log("[chatbotFlow] modelResponse.output (raw):", modelResponse?.output);
-      }
-      try {
-        console.log("[chatbotFlow] modelResponse.candidates (stringified):", JSON.stringify(modelResponse?.candidates, null, 2));
-      } catch (e) {
-         console.error("[chatbotFlow] Failed to stringify modelResponse.candidates:", e);
-          console.log("[chatbotFlow] modelResponse.candidates (raw):", modelResponse?.candidates);
-      }
-      console.log("[chatbotFlow] modelResponse.usage:", JSON.stringify(modelResponse?.usage, null, 2));
-      console.log("[chatbotFlow] modelResponse.request (stringified):", JSON.stringify(modelResponse?.request, null, 2));
-      // == End Detailed Logging ==
-
-
-      // Extract the text content using the correct Genkit 1.x syntax (response.text)
+      // Extract the text content
       const responseText = modelResponse?.text;
       console.log("[chatbotFlow] Extracted text from model response:", responseText);
 
-      // Check if the extracted text is valid
-      if (responseText === undefined || responseText === null || responseText.trim() === '') {
-        console.warn("[chatbotFlow] Received empty, null, undefined, or whitespace-only text response from model.");
-        // Check if there's content in candidates even if .text is empty
-        const candidateText = modelResponse?.candidates?.[0]?.message?.content?.[0]?.text;
-        if (candidateText && candidateText.trim() !== '') {
-             console.log("[chatbotFlow] Using text from the first candidate instead:", candidateText);
-             return { response: candidateText };
-        }
-        return { response: "Sorry, I couldn't generate a valid text response." };
+      if (!responseText?.trim()) {
+        console.warn("[chatbotFlow] Received empty response from model.");
+        return { response: "Sorry, I couldn't generate a valid response." };
       }
 
-      // Structure the output according to the flow's outputSchema.
-      console.log("[chatbotFlow] Successfully generated response via flow:", responseText);
       return { response: responseText };
 
     } catch (error) {
       console.error("[chatbotFlow] Error occurred during flow execution:", error);
-      throw error; // Re-throw for the caller (chatWithAssistant) to handle
+      throw error;
     }
   }
 );
