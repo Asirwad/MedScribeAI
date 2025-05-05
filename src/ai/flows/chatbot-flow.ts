@@ -10,7 +10,7 @@
 
 import { ai } from '@/ai/ai-instance'; // ai instance already configured with default model
 import { z } from 'genkit';
-import type { GenerateResponse } from 'genkit'; // Import GenerateResponse type
+import type { GenerateResponse, MessageData } from 'genkit'; // Import GenerateResponse and MessageData types
 
 // Define the structure for a single chat message
 const ChatMessageSchema = z.object({
@@ -82,15 +82,20 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
     console.log("[chatbotFlow] Flow entered with input:", JSON.stringify(input, null, 2));
 
     try {
-      // 1. Construct messages in the format expected by the AI model
-      const messagesForAI: Array<{role: 'user' | 'model', content: {text: string}[]}> = [];
+      // 1. Construct messages in the format expected by the AI model (MessageData[])
+      const messagesForAI: MessageData[] = [];
+
+      // System Prompt (if needed, add as the first message for some models)
+      // Note: For Gemini, using the 'system' parameter in ai.generate is often preferred.
+      // If using 'system' param, don't include it here. If not using 'system', add here:
+      // messagesForAI.push({ role: 'system', content: [{ text: 'Your system prompt here...' }] });
 
       // Add history messages first
       if (input.history) {
         input.history.forEach(msg => {
           // Ensure roles are 'user' or 'model' and content is structured correctly
           messagesForAI.push({
-            role: msg.role, // Role is already 'user' or 'model' from ChatMessageSchema
+            role: msg.role,
             content: [{ text: msg.content }] // Gemini expects content as an array of parts
           });
         });
@@ -102,18 +107,20 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
         content: [{ text: input.message }]
       });
 
-      console.log("[chatbotFlow] Calling ai.generate with messages:", JSON.stringify(messagesForAI, null, 2));
+      console.log("[chatbotFlow] Constructed messages for AI:", JSON.stringify(messagesForAI, null, 2));
 
-      // 2. Call ai.generate with the prepared messages and system prompt
-      const modelResponse: GenerateResponse = await ai.generate({ // Use await here for ai.generate
+      // 2. Call ai.generate with the prepared messages
+      console.log("[chatbotFlow] Calling ai.generate...");
+      const modelResponse: GenerateResponse = await ai.generate({
         // Pass the structured messages array as the prompt
         prompt: messagesForAI,
-        // Define the system's persona and instructions
+         // Define the system's persona and instructions - preferred way for Gemini
         system: `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice. Keep responses brief unless asked for details.`,
         // Specify the desired output format (text is default but good to be explicit)
         output: { format: 'text' },
         // Use the default model configured in ai-instance.ts
       });
+      console.log("[chatbotFlow] ai.generate response received.");
 
       // 3. Extract the text response
       const responseText = modelResponse?.text; // Use .text for v1.x
@@ -127,13 +134,13 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
       }
 
       // Return the successful response, fitting the ChatOutputSchema
+      console.log("[chatbotFlow] Returning successful response.");
       return { response: responseText };
 
     } catch (error) {
       console.error("[chatbotFlow] Error occurred during flow execution:", error);
       // Re-throw the error to be caught by the calling function (chatWithAssistant)
       // This allows the caller to handle the error presentation to the user.
-      // You could also format a specific error response here if preferred.
       throw error; // Let chatWithAssistant handle user-facing error message
     }
   }
