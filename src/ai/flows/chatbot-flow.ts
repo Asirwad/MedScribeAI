@@ -8,8 +8,9 @@
  * - ChatOutput - The return type for the chatWithAssistant function.
  */
 
-import {ai} from '@/ai/ai-instance'; // ai instance already configured with default model
-import {z} from 'genkit';
+import { ai } from '@/ai/ai-instance'; // ai instance already configured with default model
+import { z } from 'genkit';
+import type { GenerateResponse } from 'genkit'; // Import GenerateResponse type
 
 // Define the structure for a single chat message
 const ChatMessageSchema = z.object({
@@ -33,14 +34,33 @@ export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 
 // Exported function to be called by the frontend
 export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
-  // Directly call the defined prompt flow, which uses the default model
-  // The prompt now returns the processed output directly.
-  const result = await chatbotPrompt(input);
-  // Ensure result is not null before returning (though definePrompt should guarantee this)
-  return result ?? { response: "Sorry, I couldn't generate a response." };
+  try {
+    console.log("[chatWithAssistant] Calling chatbotPrompt with input:", input);
+    // Call the prompt directly. Since we removed the processor, it returns GenerateResponse.
+    const modelResponse: GenerateResponse = await chatbotPrompt(input);
+    console.log("[chatWithAssistant] chatbotPrompt raw response:", modelResponse);
+
+    // Extract text using the correct Genkit 1.x syntax (response.text)
+    const responseText = modelResponse?.text;
+
+    if (responseText === undefined || responseText === null) {
+        console.warn("[chatWithAssistant] Received null or undefined text response from model.");
+        return { response: "Sorry, I couldn't generate a text response." };
+    }
+
+    // Return the structured output
+    return { response: responseText };
+
+  } catch (error) {
+      console.error("[chatWithAssistant] Error calling chatbotPrompt:", error);
+      // Return a specific error response
+      return { response: "An error occurred while processing your request." };
+      // Or: throw error; // If the caller should handle it
+  }
 }
 
 // Define the prompt - uses history for context and the default model from ai-instance
+// REMOVED the processor function (second argument)
 const chatbotPrompt = ai.definePrompt(
   {
     name: 'chatbotPrompt',
@@ -48,9 +68,12 @@ const chatbotPrompt = ai.definePrompt(
     input: {
       schema: ChatInputSchema,
     },
-    output: {
-      schema: ChatOutputSchema,
-    },
+    // Output schema is still defined for documentation/validation if needed elsewhere,
+    // but the prompt itself won't automatically format to it without the processor.
+    // Genkit aims to return text by default if no output schema processor is used.
+    // output: {
+    //   schema: ChatOutputSchema,
+    // },
     // System message to define the assistant's role
     system: `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice.`,
     // Prompt template using Handlebars - iterates through history and adds the new message
@@ -62,19 +85,12 @@ const chatbotPrompt = ai.definePrompt(
 {{/if}}
 User: {{{message}}}
 Assistant:`,
-  },
-  // This function processes the prompt output (the raw model response)
-  // into the structured ChatOutputSchema.
-  async (modelResponse) => {
-    // The default model's response text is directly accessible via .text
-    return { response: modelResponse.text };
   }
+  // NO PROCESSOR FUNCTION HERE
 );
 
-// Define the Genkit flow that simply wraps the prompt call
-// Note: This flow is not strictly necessary anymore since chatWithAssistant calls chatbotPrompt directly,
-// but it can be useful for Genkit tracing/observability if defined and potentially called elsewhere.
-// For this fix, we keep it but ensure chatWithAssistant uses the prompt correctly.
+
+// Define the Genkit flow - this remains largely unchanged but is less critical now
 const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchema>(
   {
     name: 'chatbotFlow',
@@ -82,12 +98,10 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
     outputSchema: ChatOutputSchema,
   },
   async (input) => {
-    // Call the prompt. Genkit handles passing history from input to the prompt template.
-    const result = await chatbotPrompt(input);
-    return result ?? { response: "Sorry, I couldn't generate a response via the flow." };
+    // Call the prompt. It returns GenerateResponse.
+    const modelResponse = await chatbotPrompt(input);
+    // Extract text and structure the output according to the flow's outputSchema.
+    const responseText = modelResponse?.text;
+    return { response: responseText ?? "Sorry, I couldn't generate a response via the flow." };
   }
 );
-
-// Note: We no longer need the complex manual history management inside the flow
-// because the prompt template handles it. The ai.definePrompt automatically uses
-// the history field from the input schema.
