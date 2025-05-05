@@ -92,14 +92,14 @@ const chatbotPrompt = ai.definePrompt(
     // System message to define the assistant's role
     system: `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice.`,
     // Prompt template using Handlebars - iterates through history and adds the new message
+    // Removed the non-standard 'eq' helper.
     prompt: `{{#if history}}
 {{#each history}}
-{{#if (eq role 'user')}}User: {{content}}{{/if}}
-{{#if (eq role 'model')}}Assistant: {{content}}{{/if}}
+{{role}}: {{content}}
 {{/each}}
 {{/if}}
-User: {{{message}}}
-Assistant:`,
+user: {{{message}}}
+model:`,
   }
   // NO PROCESSOR FUNCTION HERE
 );
