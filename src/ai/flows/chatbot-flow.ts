@@ -65,6 +65,7 @@ export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
       } else {
            errorMessage = `Error: ${error.message}. Please try again.`;
       }
+      console.error("  Detailed Error Message:", error.message); // Log the detailed error message
 
       if (process.env.NODE_ENV === 'development' && error.stack) {
            console.error("  Error Stack:", error.stack);
@@ -103,6 +104,8 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
                role: msg.role,
                content: [{ text: msg.content }] // Gemini expects content as an array of parts
              });
+          } else {
+             console.warn("[chatbotFlow] Skipping unexpected role in history:", msg.role);
           }
         });
       }
@@ -113,22 +116,22 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
         content: [{ text: input.message }]
       });
 
-      console.log("[chatbotFlow] Constructed messages for AI (excluding system):", JSON.stringify(messagesForAI, null, 2));
-
       // Define the system prompt separately
       const systemPrompt = `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice. Keep responses brief unless asked for details.`;
 
-      // 2. Call ai.generate with the prepared messages and the system prompt
-      console.log("[chatbotFlow] Calling ai.generate with system prompt...");
-      const modelResponse: GenerateResponse = await ai.generate({
-        // Pass the structured messages array as the prompt
-        prompt: messagesForAI,
-         // Define the system's persona and instructions using the 'system' parameter
+      // 2. Log arguments before calling ai.generate
+      const generateArgs = {
+         prompt: messagesForAI,
          system: systemPrompt,
-        // Specify the desired output format (text is default but good to be explicit)
-        output: { format: 'text' },
-        // Use the default model configured in ai-instance.ts
-      });
+         output: { format: 'text' as const }, // Ensure type safety
+         // Specify the model explicitly for clarity, even if it's the default
+         model: ai.getModel(),
+      };
+      console.log("[chatbotFlow] Calling ai.generate with arguments:", JSON.stringify(generateArgs, null, 2));
+
+
+      // Call ai.generate with the prepared messages and the system prompt
+      const modelResponse: GenerateResponse = await ai.generate(generateArgs);
       console.log("[chatbotFlow] ai.generate response received.");
 
       // 3. Extract the text response
@@ -148,6 +151,15 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
 
     } catch (error) {
       console.error("[chatbotFlow] Error occurred during flow execution:", error);
+      // Log the error details within the flow as well
+      if (error instanceof Error) {
+          console.error("  Flow Error Message:", error.message);
+          if (error.stack) {
+              console.error("  Flow Error Stack:", error.stack);
+          }
+      } else {
+          console.error("  Caught non-Error exception in flow:", error);
+      }
       // Re-throw the error to be caught by the calling function (chatWithAssistant)
       // This allows the caller to handle the error presentation to the user.
       throw error; // Let chatWithAssistant handle user-facing error message
