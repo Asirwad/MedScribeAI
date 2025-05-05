@@ -76,36 +76,7 @@ export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
 }
 
 
-// Define the prompt - used internally by the flow
-const chatbotPrompt = ai.definePrompt(
-  {
-    name: 'chatbotPrompt',
-    // No model specified here, it will use the default model ('googleai/gemini-2.0-flash') from ai-instance.ts
-    input: {
-      schema: ChatInputSchema,
-    },
-    // Output schema is NOT strictly enforced by definePrompt itself for the raw LLM call,
-    // but guides the LLM. The flow (`chatbotFlow`) is responsible for structuring the final output.
-    // output: {
-    //   schema: ChatOutputSchema,
-    // },
-    // System message to define the assistant's role
-    system: `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice.`,
-    // Prompt template using Handlebars - iterates through history and adds the new message
-    // Removed the non-standard 'eq' helper.
-    prompt: `{{#if history}}
-{{#each history}}
-{{role}}: {{content}}
-{{/each}}
-{{/if}}
-user: {{{message}}}
-model:`,
-  }
-  // NO PROCESSOR FUNCTION HERE
-);
-
-
-// Define the Genkit flow - this function orchestrates calling the prompt and formatting the output.
+// Define the Genkit flow - this function orchestrates calling the LLM and formatting the output.
 const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchema>(
   {
     name: 'chatbotFlow',
@@ -116,31 +87,68 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
     console.log("[chatbotFlow] Flow entered with input:", JSON.stringify(input, null, 2));
 
     try {
-        // Call the underlying prompt. It returns a GenerateResponse object.
-        console.log("[chatbotFlow] Calling chatbotPrompt...");
-        const modelResponse: GenerateResponse = await chatbotPrompt(input);
-        console.log("[chatbotFlow] Raw response from chatbotPrompt:", JSON.stringify(modelResponse, null, 2));
+      // Manually construct the messages array for ai.generate
+      // The structure should be compatible with the underlying model's API.
+      // For Gemini, it expects an array of { role: 'user' | 'model', parts: [{ text: '...' }] }
+      const messagesForAI: { role: 'user' | 'model'; content: { text: string }[] }[] = [];
 
-        // Extract the text content using the correct Genkit 1.x syntax (response.text)
-        const responseText = modelResponse?.text;
-        console.log("[chatbotFlow] Extracted text from model response:", responseText);
+      // Add history messages
+      if (input.history) {
+        input.history.forEach(msg => {
+          // Make sure role matches 'user' or 'model'
+          if (msg.role === 'user' || msg.role === 'model') {
+              messagesForAI.push({
+                role: msg.role,
+                content: [{ text: msg.content }] // Gemini format: parts is an array
+              });
+          }
+        });
+      }
 
-        // Check if the extracted text is valid
-        if (responseText === undefined || responseText === null || responseText.trim() === '') {
-            console.warn("[chatbotFlow] Received empty, null, undefined, or whitespace-only text response from model.");
-            // Return a specific message adhering to the output schema
-            return { response: "Sorry, I couldn't generate a valid text response." };
-        }
+      // Add the current user message
+      messagesForAI.push({
+        role: 'user',
+        content: [{ text: input.message }] // Gemini format
+      });
 
-        // Structure the output according to the flow's outputSchema.
-        console.log("[chatbotFlow] Successfully generated response via flow:", responseText);
-        return { response: responseText };
+      console.log("[chatbotFlow] Calling ai.generate with messages:", JSON.stringify(messagesForAI, null, 2));
+
+      // Call ai.generate directly
+      // Genkit's ai.generate should handle the mapping to the Google AI API format
+      const modelResponse = await ai.generate({
+        // Use the default model configured in ai-instance.ts ('googleai/gemini-2.0-flash')
+        prompt: messagesForAI, // Pass the constructed message history
+        system: `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice.`,
+        output: { format: 'text' }, // Explicitly request text format
+        config: {
+            // Potentially add temperature or other generation configs here if needed
+            // temperature: 0.7
+        },
+      });
+
+
+      console.log("[chatbotFlow] Raw response from ai.generate:", JSON.stringify(modelResponse, null, 2));
+
+      // Extract the text content using the correct Genkit 1.x syntax (response.text)
+      const responseText = modelResponse?.text;
+      console.log("[chatbotFlow] Extracted text from model response:", responseText);
+
+      // Check if the extracted text is valid
+      if (responseText === undefined || responseText === null || responseText.trim() === '') {
+        console.warn("[chatbotFlow] Received empty, null, undefined, or whitespace-only text response from model.");
+        return { response: "Sorry, I couldn't generate a valid text response." };
+      }
+
+      // Structure the output according to the flow's outputSchema.
+      console.log("[chatbotFlow] Successfully generated response via flow:", responseText);
+      return { response: responseText };
 
     } catch (error) {
-        console.error("[chatbotFlow] Error occurred during flow execution:", error);
-         // Re-throw the error so the caller (chatWithAssistant) can handle it.
-         // This ensures the error propagates correctly.
-         throw error; // Or wrap in a new error: throw new Error(`Chatbot flow failed: ${error}`);
+      console.error("[chatbotFlow] Error occurred during flow execution:", error);
+      throw error; // Re-throw for the caller (chatWithAssistant) to handle
     }
   }
 );
+
+// chatbotPrompt is no longer needed as we use ai.generate directly in the flow
+// const chatbotPrompt = ai.definePrompt(...);
