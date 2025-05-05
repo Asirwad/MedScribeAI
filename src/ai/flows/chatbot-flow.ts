@@ -57,8 +57,15 @@ export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
     console.error("[chatWithAssistant] Error executing chatbotFlow:", error);
     let errorMessage = "An error occurred while processing your chat request.";
     if (error instanceof Error) {
-      errorMessage = `Error: ${error.message}. Please try again.`;
-      // Optionally log stack trace for more detailed debugging on the server
+      // Modify the error message to be more user-friendly and less technical
+      if (error.message.includes("Unsupported Part type")) {
+          errorMessage = "Sorry, I'm having trouble understanding the conversation format. Please try rephrasing or starting a new chat.";
+      } else if (error.message.includes("reading 'content'")) {
+           errorMessage = "Sorry, there was an issue processing part of the conversation. Could you try again?";
+      } else {
+           errorMessage = `Error: ${error.message}. Please try again.`;
+      }
+
       if (process.env.NODE_ENV === 'development' && error.stack) {
            console.error("  Error Stack:", error.stack);
       }
@@ -83,23 +90,20 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
 
     try {
       // 1. Construct messages in the format expected by the AI model (MessageData[])
+      // Exclude the system prompt from this array now.
       const messagesForAI: MessageData[] = [];
 
-      // Add System Prompt as the first message with role 'system'
-      messagesForAI.push({
-         role: 'system',
-         content: [{ text: `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice. Keep responses brief unless asked for details.` }]
-      });
-
-
-      // Add history messages next
+      // Add history messages next (user and model roles only)
       if (input.history) {
         input.history.forEach(msg => {
           // Ensure roles are 'user' or 'model' and content is structured correctly
-          messagesForAI.push({
-            role: msg.role,
-            content: [{ text: msg.content }] // Gemini expects content as an array of parts
-          });
+          // Filter out any potential system messages from history (shouldn't be there, but safe)
+          if (msg.role === 'user' || msg.role === 'model') {
+             messagesForAI.push({
+               role: msg.role,
+               content: [{ text: msg.content }] // Gemini expects content as an array of parts
+             });
+          }
         });
       }
 
@@ -109,15 +113,18 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
         content: [{ text: input.message }]
       });
 
-      console.log("[chatbotFlow] Constructed messages for AI:", JSON.stringify(messagesForAI, null, 2));
+      console.log("[chatbotFlow] Constructed messages for AI (excluding system):", JSON.stringify(messagesForAI, null, 2));
 
-      // 2. Call ai.generate with the prepared messages
-      console.log("[chatbotFlow] Calling ai.generate...");
+      // Define the system prompt separately
+      const systemPrompt = `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice. Keep responses brief unless asked for details.`;
+
+      // 2. Call ai.generate with the prepared messages and the system prompt
+      console.log("[chatbotFlow] Calling ai.generate with system prompt...");
       const modelResponse: GenerateResponse = await ai.generate({
         // Pass the structured messages array as the prompt
         prompt: messagesForAI,
-         // Define the system's persona and instructions - REMOVED: Now part of the messages array
-        // system: `You are MedScribeAI Assistant...`,
+         // Define the system's persona and instructions using the 'system' parameter
+         system: systemPrompt,
         // Specify the desired output format (text is default but good to be explicit)
         output: { format: 'text' },
         // Use the default model configured in ai-instance.ts
