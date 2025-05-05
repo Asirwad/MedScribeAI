@@ -1,11 +1,12 @@
 
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react'; // Added useRef
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Bot, Mic, FileText, CheckCircle, Zap, ShieldCheck } from 'lucide-react'; // Added relevant icons
-import { motion } from 'framer-motion';
+// Import motion, useScroll, and useTransform
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ChatBubble } from '@/components/chat-bubble'; // Import the ChatBubble component
 
@@ -14,6 +15,23 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onEnterApp }: LandingPageProps) {
+
+  // Ref for the container element to track scroll within
+  const targetRef = useRef<HTMLDivElement>(null);
+
+  // Hook to track scroll progress relative to the targetRef
+  const { scrollYProgress } = useScroll({
+    target: targetRef,
+    offset: ["start start", "end start"] // Track scroll from when top of target hits top of viewport, until bottom hits top
+  });
+
+  // Define parallax transformations
+  // Example: Move the image up slightly slower than the scroll speed
+  // Input range [0, 1] corresponds to scroll progress from start to end offset
+  // Output range [0, -50] means move from 0px to -50px vertically
+  const imageY = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  // Example: Fade out the text slightly faster
+  const textOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]); // Fade out by the time scrolled halfway through hero
 
   // Animation variants
   const fadeIn = {
@@ -54,7 +72,8 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
   }
 
   return (
-    <div className={cn(
+    // Add ref to the main container for scroll tracking
+    <div ref={targetRef} className={cn(
       "flex flex-col min-h-screen bg-background text-foreground antialiased",
       "overflow-x-hidden"
       )}>
@@ -93,11 +112,12 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
           animate="visible"
           variants={staggerContainer}
           // Adjusted padding for large screens
-          className="relative container mx-auto flex flex-col md:flex-row items-center justify-center gap-12 px-4 py-20 text-center md:text-left md:py-28 lg:py-28 sm:px-6 lg:px-8">
+          className="relative container mx-auto flex flex-col md:flex-row items-center justify-center gap-12 px-4 py-20 text-center md:text-left md:py-24 lg:py-28 sm:px-6 lg:px-8"> {/* Reduced py-28 slightly */}
 
           {/* Text Content - Left side on desktop */}
            <motion.div
               variants={slideInLeft} // Use slideInLeft for text
+              style={{ opacity: textOpacity }} // Apply parallax opacity
               className="max-w-xl space-y-6 md:w-1/2 lg:w-2/5"> {/* Controlled width */}
              {/* Optional: Badge */}
              <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-primary mb-4 dark:bg-blue-900/30 dark:text-blue-300">
@@ -125,9 +145,10 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
              </div>
           </motion.div>
 
-          {/* Image/Illustration - Right side on desktop */}
+          {/* Image/Illustration - Right side on desktop - Apply parallax */}
            <motion.div
               variants={slideInRight} // Use slideInRight for image
+              style={{ y: imageY }} // Apply parallax vertical movement
               className="w-full md:w-1/2 lg:w-2/5 mt-10 md:mt-0"> {/* Controlled width, removed top margin on desktop */}
              <Image
                data-ai-hint="doctor patient interaction modern illustration medical ai"
