@@ -85,12 +85,14 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
       // 1. Construct messages in the format expected by the AI model (MessageData[])
       const messagesForAI: MessageData[] = [];
 
-      // System Prompt (if needed, add as the first message for some models)
-      // Note: For Gemini, using the 'system' parameter in ai.generate is often preferred.
-      // If using 'system' param, don't include it here. If not using 'system', add here:
-      // messagesForAI.push({ role: 'system', content: [{ text: 'Your system prompt here...' }] });
+      // Add System Prompt as the first message with role 'system'
+      messagesForAI.push({
+         role: 'system',
+         content: [{ text: `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice. Keep responses brief unless asked for details.` }]
+      });
 
-      // Add history messages first
+
+      // Add history messages next
       if (input.history) {
         input.history.forEach(msg => {
           // Ensure roles are 'user' or 'model' and content is structured correctly
@@ -114,8 +116,8 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
       const modelResponse: GenerateResponse = await ai.generate({
         // Pass the structured messages array as the prompt
         prompt: messagesForAI,
-         // Define the system's persona and instructions - preferred way for Gemini
-        system: `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice. Keep responses brief unless asked for details.`,
+         // Define the system's persona and instructions - REMOVED: Now part of the messages array
+        // system: `You are MedScribeAI Assistant...`,
         // Specify the desired output format (text is default but good to be explicit)
         output: { format: 'text' },
         // Use the default model configured in ai-instance.ts
