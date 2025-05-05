@@ -34,9 +34,10 @@ export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 // Exported function to be called by the frontend
 export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
   // Directly call the defined prompt flow, which uses the default model
-  const { output } = await chatbotPrompt(input);
-  // Ensure output is not null before returning
-  return output!;
+  // The prompt now returns the processed output directly.
+  const result = await chatbotPrompt(input);
+  // Ensure result is not null before returning (though definePrompt should guarantee this)
+  return result ?? { response: "Sorry, I couldn't generate a response." };
 }
 
 // Define the prompt - uses history for context and the default model from ai-instance
@@ -71,6 +72,9 @@ Assistant:`,
 );
 
 // Define the Genkit flow that simply wraps the prompt call
+// Note: This flow is not strictly necessary anymore since chatWithAssistant calls chatbotPrompt directly,
+// but it can be useful for Genkit tracing/observability if defined and potentially called elsewhere.
+// For this fix, we keep it but ensure chatWithAssistant uses the prompt correctly.
 const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchema>(
   {
     name: 'chatbotFlow',
@@ -78,9 +82,9 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
     outputSchema: ChatOutputSchema,
   },
   async (input) => {
-    // Directly call the prompt. Genkit handles passing history from input to the prompt template.
-    const { output } = await chatbotPrompt(input);
-    return output!;
+    // Call the prompt. Genkit handles passing history from input to the prompt template.
+    const result = await chatbotPrompt(input);
+    return result ?? { response: "Sorry, I couldn't generate a response via the flow." };
   }
 );
 
