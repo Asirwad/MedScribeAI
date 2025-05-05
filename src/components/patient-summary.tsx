@@ -151,7 +151,7 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
                     <div className="flex items-center gap-1">
                          <Badge variant="secondary" className="whitespace-nowrap">{formatDate(obs.date)}</Badge>
                          {index === 0 && ( // Add 'New' badge only for the first item
-                            <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white font-semibold">New</Badge>
+                            <Badge variant="default" className="bg-green-100 text-green-800 text-xs font-medium hover:bg-green-200 me-2 px-2.5 py-0.5 rounded-sm dark:bg-green-900 dark:text-green-300">New</Badge>
                          )}
                     </div>
                   </li>
@@ -177,7 +177,7 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
                       <div className="flex items-center gap-1">
                          <Badge variant="secondary" className="whitespace-nowrap">{formatDate(enc.startDate)}</Badge>
                          {index === 0 && ( // Add 'New' badge only for the first item
-                            <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white font-semibold">New</Badge>
+                            <Badge variant="default" className="bg-green-100 text-green-800 text-xs font-medium me-2 px-2.5 py-0.5 rounded-sm hover:bg-green-200 dark:bg-green-900 dark:text-green-300">New</Badge>
                          )}
                       </div>
                     </li>

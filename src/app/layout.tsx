@@ -1,16 +1,27 @@
+
 import type { Metadata } from 'next';
-import { Open_Sans } from 'next/font/google'; // Import Open Sans
+import { Open_Sans, Poppins } from 'next/font/google'; // Import Poppins
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { ThemeProvider } from '@/components/theme-provider'; // Import ThemeProvider
+import { ThemeProvider } from '@/components/theme-provider';
+import { cn } from '@/lib/utils'; // Import cn
 
-const openSans = Open_Sans({ // Configure Open Sans
+// Configure Open Sans for body text
+const openSans = Open_Sans({
   variable: '--font-open-sans',
   subsets: ['latin'],
 });
 
+// Configure Poppins for headings/logo (adjust weights as needed)
+const poppins = Poppins({
+  variable: '--font-poppins',
+  subsets: ['latin'],
+  weight: ['400', '600', '700'], // Include weights for regular, semibold, bold
+});
+
+
 export const metadata: Metadata = {
-  title: 'MedScribeAI', // Renamed from MediScribeAI
+  title: 'MedScribeAI',
   description: 'Agentic Clinical Documentation Assistant',
 };
 
@@ -20,9 +31,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    // Apply both font variables to the html tag
+    <html lang="en" className={cn(openSans.variable, poppins.variable)} suppressHydrationWarning>
+      {/* Removed extra space causing hydration error */}
       <body
-        className={`${openSans.variable} antialiased`} // Use Open Sans variable
+        className="antialiased font-sans" // Use the default sans font which now includes Open Sans
       >
         <ThemeProvider
           attribute="class"

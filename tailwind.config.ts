@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 const { fontFamily } = require("tailwindcss/defaultTheme") // Import default theme
 
@@ -11,7 +12,10 @@ export default {
   theme: {
     extend: {
       fontFamily: { // Add font family definition
+         // Set Open Sans as default sans-serif
         sans: ["var(--font-open-sans)", ...fontFamily.sans],
+         // Add Poppins specifically for headings or logo use
+        heading: ["var(--font-poppins)", ...fontFamily.sans],
       },
       colors: {
         background: 'hsl(var(--background))',
