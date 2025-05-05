@@ -35,29 +35,49 @@ export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 // Exported function to be called by the frontend
 export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
   try {
-    console.log("[chatWithAssistant] Calling chatbotPrompt with input:", input);
-    // Call the prompt directly. Since we removed the processor, it returns GenerateResponse.
+    console.log("[chatWithAssistant] Calling chatbotPrompt with input:", JSON.stringify(input));
+
+    // Call the prompt directly. It returns GenerateResponse.
     const modelResponse: GenerateResponse = await chatbotPrompt(input);
     console.log("[chatWithAssistant] chatbotPrompt raw response:", modelResponse);
 
     // Extract text using the correct Genkit 1.x syntax (response.text)
+    // Ensure the response and text properties exist before accessing.
     const responseText = modelResponse?.text;
 
-    if (responseText === undefined || responseText === null) {
-        console.warn("[chatWithAssistant] Received null or undefined text response from model.");
-        return { response: "Sorry, I couldn't generate a text response." };
+    if (responseText === undefined || responseText === null || responseText === '') {
+        console.warn("[chatWithAssistant] Received empty, null, or undefined text response from model.");
+        // Provide a specific message if the response text is empty/null
+        return { response: "Sorry, I couldn't generate a valid text response." };
     }
 
     // Return the structured output
+    console.log("[chatWithAssistant] Successfully generated response:", responseText);
     return { response: responseText };
 
-  } catch (error) {
-      console.error("[chatWithAssistant] Error calling chatbotPrompt:", error);
-      // Return a specific error response
-      return { response: "An error occurred while processing your request." };
-      // Or: throw error; // If the caller should handle it
+  } catch (error: unknown) { // Catch unknown to inspect the error type
+      // Log the specific error caught for better debugging
+      console.error("[chatWithAssistant] Error occurred while calling chatbotPrompt:", error);
+
+      // Check if it's a GenkitError or a standard Error for potentially more details
+      let errorMessage = "An error occurred while processing your request.";
+      if (error instanceof Error) {
+          // Optionally include error name or message for more context, but be careful not to expose sensitive info
+          errorMessage = `An error occurred (${error.name}). Please try again later.`;
+          console.error("Error Name:", error.name);
+          console.error("Error Message:", error.message);
+          if (error.stack) {
+              console.error("Error Stack:", error.stack);
+          }
+      }
+
+      // Return a user-friendly error response
+      return { response: errorMessage };
+      // Do not re-throw unless the caller is prepared to handle it
+      // throw error;
   }
 }
+
 
 // Define the prompt - uses history for context and the default model from ai-instance
 // REMOVED the processor function (second argument)
@@ -91,6 +111,7 @@ Assistant:`,
 
 
 // Define the Genkit flow - this remains largely unchanged but is less critical now
+// as chatWithAssistant calls the prompt directly.
 const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchema>(
   {
     name: 'chatbotFlow',
@@ -102,6 +123,10 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
     const modelResponse = await chatbotPrompt(input);
     // Extract text and structure the output according to the flow's outputSchema.
     const responseText = modelResponse?.text;
-    return { response: responseText ?? "Sorry, I couldn't generate a response via the flow." };
+     if (!responseText) {
+       console.warn("[chatbotFlow] Received empty, null, or undefined text response from model within flow.");
+       return { response: "Sorry, I couldn't generate a response via the flow." };
+     }
+    return { response: responseText };
   }
 );
