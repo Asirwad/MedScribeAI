@@ -87,15 +87,18 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
       {/* Main Content */}
       <main className="flex-1">
 
-        {/* Hero Section - ScribeMD Inspired - Centered */}
+        {/* Hero Section - Side-by-side on desktop, centered */}
         <motion.section
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
-          className="relative container mx-auto flex flex-col items-center justify-center gap-12 px-4 py-20 text-center md:py-28 lg:py-36 sm:px-6 lg:px-8">
+          // Adjusted flex direction for responsiveness
+          className="relative container mx-auto flex flex-col md:flex-row items-center justify-center gap-12 px-4 py-20 text-center md:text-left md:py-28 lg:py-36 sm:px-6 lg:px-8">
 
-          {/* Text Content - Centered */}
-          <motion.div variants={slideUp} className="max-w-3xl space-y-6"> {/* Use max-w for text block */}
+          {/* Text Content - Left side on desktop */}
+           <motion.div
+              variants={slideInLeft} // Use slideInLeft for text
+              className="max-w-xl space-y-6 md:w-1/2 lg:w-2/5"> {/* Controlled width */}
              {/* Optional: Badge */}
              <span className="inline-block rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-primary mb-4 dark:bg-blue-900/30 dark:text-blue-300">
                 Ambient AI Medical Scribe
@@ -103,10 +106,10 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
             <h1 className="text-4xl font-bold leading-tight tracking-tighter sm:text-5xl md:text-6xl lg:text-6xl text-foreground">
               Focus on Patients, <br className="hidden sm:block"/> Not on Your Keyboard.
             </h1>
-            <p className="max-w-xl mx-auto text-base text-muted-foreground sm:text-lg md:text-xl"> {/* Centered paragraph */}
+            <p className="max-w-xl text-base text-muted-foreground sm:text-lg md:text-xl"> {/* Paragraph aligned left on desktop */}
                MedScribeAI uses ambient AI to listen, transcribe, and generate accurate clinical notes in real-time, directly integrated with your workflow.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center"> {/* Centered buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start"> {/* Buttons aligned left on desktop */}
               <Button onClick={onEnterApp} size="lg" className="rounded-md px-8 py-3 text-base">
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -116,22 +119,23 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
               </Button> */}
             </div>
              {/* Optional: Trust indicators */}
-             <div className="pt-1 text-xs text-muted-foreground flex items-center justify-center gap-2"> {/* Centered indicators */}
+             <div className="pt-1 text-xs text-muted-foreground flex items-center justify-center md:justify-start gap-2"> {/* Indicators aligned left on desktop */}
                <ShieldCheck className="h-4 w-4 text-green-600" />
                <span>HIPAA Compliant (Simulated)</span>
              </div>
           </motion.div>
 
-          {/* Image/Illustration - Centered and Smaller */}
-           <motion.div variants={fadeIn} className="w-full mt-10"> {/* Fade in animation */}
+          {/* Image/Illustration - Right side on desktop */}
+           <motion.div
+              variants={slideInRight} // Use slideInRight for image
+              className="w-full md:w-1/2 lg:w-2/5 mt-10 md:mt-0"> {/* Controlled width, removed top margin on desktop */}
              <Image
                data-ai-hint="doctor patient interaction modern illustration medical ai"
                src="https://www.scribemd.ai/assets/new_hero-86ac943aebdbd5be8d6318cf384a04b227882cca5e3243bae78aacb277050800.svg" // Placeholder image
                alt="MedScribeAI in action"
-               width={300}
-               height={225}
-               // Reduced max-width, kept centering
-               className="rounded-lg shadow-none mx-auto w-full max-w-xl h-auto border border-border/20"
+               width={450} // Slightly increased width for side-by-side
+               height={338} // Adjusted height proportionally
+               className="rounded-lg shadow-none mx-auto w-full max-w-md h-auto border border-border/20" // Adjusted max-width
                priority
              />
            </motion.div>
