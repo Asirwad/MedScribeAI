@@ -127,7 +127,25 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
       });
 
 
-      console.log("[chatbotFlow] Raw response from ai.generate:", JSON.stringify(modelResponse, null, 2));
+      // == Detailed Logging Added ==
+      console.log("[chatbotFlow] Raw response object from ai.generate:", JSON.stringify(modelResponse, null, 2));
+      console.log("[chatbotFlow] modelResponse.text:", modelResponse?.text);
+      try {
+        console.log("[chatbotFlow] modelResponse.output (stringified):", JSON.stringify(modelResponse?.output, null, 2));
+      } catch (e) {
+         console.error("[chatbotFlow] Failed to stringify modelResponse.output:", e);
+         console.log("[chatbotFlow] modelResponse.output (raw):", modelResponse?.output);
+      }
+      try {
+        console.log("[chatbotFlow] modelResponse.candidates (stringified):", JSON.stringify(modelResponse?.candidates, null, 2));
+      } catch (e) {
+         console.error("[chatbotFlow] Failed to stringify modelResponse.candidates:", e);
+          console.log("[chatbotFlow] modelResponse.candidates (raw):", modelResponse?.candidates);
+      }
+      console.log("[chatbotFlow] modelResponse.usage:", JSON.stringify(modelResponse?.usage, null, 2));
+      console.log("[chatbotFlow] modelResponse.request (stringified):", JSON.stringify(modelResponse?.request, null, 2));
+      // == End Detailed Logging ==
+
 
       // Extract the text content using the correct Genkit 1.x syntax (response.text)
       const responseText = modelResponse?.text;
@@ -136,6 +154,12 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
       // Check if the extracted text is valid
       if (responseText === undefined || responseText === null || responseText.trim() === '') {
         console.warn("[chatbotFlow] Received empty, null, undefined, or whitespace-only text response from model.");
+        // Check if there's content in candidates even if .text is empty
+        const candidateText = modelResponse?.candidates?.[0]?.message?.content?.[0]?.text;
+        if (candidateText && candidateText.trim() !== '') {
+             console.log("[chatbotFlow] Using text from the first candidate instead:", candidateText);
+             return { response: candidateText };
+        }
         return { response: "Sorry, I couldn't generate a valid text response." };
       }
 
