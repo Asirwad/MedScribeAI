@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A chatbot flow using Genkit and Vertex AI (Gemini).
+ * @fileOverview A chatbot flow using Genkit.
  *
  * - chatWithAssistant - A function that handles the chatbot interaction.
  * - ChatMessage - Represents a single message in the chat history.
@@ -8,12 +8,12 @@
  * - ChatOutput - The return type for the chatWithAssistant function.
  */
 
-import {ai} from '@/ai/ai-instance';
+import {ai} from '@/ai/ai-instance'; // ai instance already configured with default model
 import {z} from 'genkit';
 
 // Define the structure for a single chat message
 const ChatMessageSchema = z.object({
-  role: z.enum(['user', 'model']), // Use 'model' for AI responses as per Genkit convention
+  role: z.enum(['user', 'model']), // 'model' for AI responses
   content: z.string(),
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
@@ -33,15 +33,17 @@ export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 
 // Exported function to be called by the frontend
 export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
-  return chatbotFlow(input);
+  // Directly call the defined prompt flow, which uses the default model
+  const { output } = await chatbotPrompt(input);
+  // Ensure output is not null before returning
+  return output!;
 }
 
-// Define the prompt - uses history for context
+// Define the prompt - uses history for context and the default model from ai-instance
 const chatbotPrompt = ai.definePrompt(
   {
     name: 'chatbotPrompt',
-    // Use the Gemini Pro model which supports conversational history
-    model: 'googleai/gemini-pro',
+    // No model specified here, it will use the default model ('googleai/gemini-2.0-flash') from ai-instance.ts
     input: {
       schema: ChatInputSchema,
     },
@@ -63,11 +65,12 @@ Assistant:`,
   // This function processes the prompt output (the raw model response)
   // into the structured ChatOutputSchema.
   async (modelResponse) => {
+    // The default model's response text is directly accessible via .text
     return { response: modelResponse.text };
   }
 );
 
-// Define the main Genkit flow
+// Define the Genkit flow that simply wraps the prompt call
 const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchema>(
   {
     name: 'chatbotFlow',
@@ -75,34 +78,12 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
     outputSchema: ChatOutputSchema,
   },
   async (input) => {
-     // Prepare messages for the model, ensuring correct role mapping
-     const messages = (input.history || []).map(msg => ({
-        role: msg.role,
-        content: [{ text: msg.content }],
-      }));
-
-     // Add the latest user message
-     messages.push({ role: 'user', content: [{ text: input.message }] });
-
-    // Call the Gemini Pro model directly for conversation
-    // Use ai.generate instead of calling the prompt function directly when managing history externally
-    const result = await ai.generate({
-       // Use the Gemini Pro model which supports conversational history
-       model: 'googleai/gemini-pro',
-       // Provide the system prompt and message history
-       system: `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice.`,
-       messages: messages,
-       // Define the expected output format (though for simple text it's often inferred)
-       output: {
-         format: 'text',
-         schema: z.string().describe("The assistant's response message."),
-       }
-    });
-
-    // Extract the text response
-    const responseText = result.text;
-
-    // Return the response structured according to the output schema
-    return { response: responseText };
+    // Directly call the prompt. Genkit handles passing history from input to the prompt template.
+    const { output } = await chatbotPrompt(input);
+    return output!;
   }
 );
+
+// Note: We no longer need the complex manual history management inside the flow
+// because the prompt template handles it. The ai.definePrompt automatically uses
+// the history field from the input schema.
