@@ -35,19 +35,26 @@ export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 // Exported function to be called by the frontend
 export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
   try {
-    console.log("[chatWithAssistant] Calling chatbotPrompt with input:", JSON.stringify(input));
+    // Log the input received by the function
+    console.log("[chatWithAssistant] Received input:", JSON.stringify(input, null, 2)); // Pretty print input
 
     // Call the prompt directly. It returns GenerateResponse.
+    // Add logging before the call
+    console.log("[chatWithAssistant] Calling chatbotPrompt...");
     const modelResponse: GenerateResponse = await chatbotPrompt(input);
-    console.log("[chatWithAssistant] chatbotPrompt raw response:", modelResponse);
+    // Log the raw response received from the model
+    console.log("[chatWithAssistant] Raw response from chatbotPrompt:", JSON.stringify(modelResponse, null, 2));
 
     // Extract text using the correct Genkit 1.x syntax (response.text)
-    // Ensure the response and text properties exist before accessing.
-    const responseText = modelResponse?.text;
+    // Ensure the response object and its text property exist before accessing.
+    const responseText = modelResponse?.text; // Use optional chaining
 
-    if (responseText === undefined || responseText === null || responseText === '') {
-        console.warn("[chatWithAssistant] Received empty, null, or undefined text response from model.");
-        // Provide a specific message if the response text is empty/null
+    // Log the extracted text (or lack thereof)
+    console.log("[chatWithAssistant] Extracted response text:", responseText);
+
+    if (responseText === undefined || responseText === null || responseText.trim() === '') {
+        console.warn("[chatWithAssistant] Received empty, null, undefined, or whitespace-only text response from model.");
+        // Provide a specific message if the response text is effectively empty
         return { response: "Sorry, I couldn't generate a valid text response." };
     }
 
@@ -57,18 +64,22 @@ export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
 
   } catch (error: unknown) { // Catch unknown to inspect the error type
       // Log the specific error caught for better debugging
-      console.error("[chatWithAssistant] Error occurred while calling chatbotPrompt:", error);
+      console.error("[chatWithAssistant] Error occurred during chatWithAssistant execution:", error);
 
       // Check if it's a GenkitError or a standard Error for potentially more details
       let errorMessage = "An error occurred while processing your request.";
       if (error instanceof Error) {
-          // Optionally include error name or message for more context, but be careful not to expose sensitive info
+          // Log more details from the Error object
           errorMessage = `An error occurred (${error.name}). Please try again later.`;
-          console.error("Error Name:", error.name);
-          console.error("Error Message:", error.message);
+          console.error("  Error Name:", error.name);
+          console.error("  Error Message:", error.message);
           if (error.stack) {
-              console.error("Error Stack:", error.stack);
+              console.error("  Error Stack:", error.stack);
           }
+          // Check for potential Genkit-specific properties if needed, though instanceof Error covers most cases
+      } else {
+          // Handle non-Error types if necessary
+          console.error("  Caught a non-Error exception:", error);
       }
 
       // Return a user-friendly error response
@@ -119,14 +130,20 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
     outputSchema: ChatOutputSchema,
   },
   async (input) => {
+    // Log input for the flow as well
+    console.log("[chatbotFlow] Flow received input:", JSON.stringify(input, null, 2));
+
     // Call the prompt. It returns GenerateResponse.
     const modelResponse = await chatbotPrompt(input);
+    console.log("[chatbotFlow] Raw response from chatbotPrompt within flow:", JSON.stringify(modelResponse, null, 2));
+
     // Extract text and structure the output according to the flow's outputSchema.
     const responseText = modelResponse?.text;
-     if (!responseText) {
-       console.warn("[chatbotFlow] Received empty, null, or undefined text response from model within flow.");
+     if (!responseText || responseText.trim() === '') {
+       console.warn("[chatbotFlow] Received empty, null, undefined, or whitespace-only text response from model within flow.");
        return { response: "Sorry, I couldn't generate a response via the flow." };
      }
+    console.log("[chatbotFlow] Successfully generated response via flow:", responseText);
     return { response: responseText };
   }
 );
