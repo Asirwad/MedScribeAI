@@ -28,21 +28,21 @@ export function ChatBubble() {
 
   const toggleChat = () => {
     setIsOpen(!isOpen);
-    // Reset input and maybe history when closing? Optional.
-    // if (isOpen) {
-    //   setInputValue('');
-    // }
   };
 
    // Scroll to bottom whenever messages change
    useEffect(() => {
      if (scrollAreaRef.current) {
+        // Find the viewport element within the ScrollArea
         const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
         if (scrollElement) {
-          scrollElement.scrollTop = scrollElement.scrollHeight;
+          // Use setTimeout to ensure scrolling happens after the DOM update
+          setTimeout(() => {
+            scrollElement.scrollTop = scrollElement.scrollHeight;
+          }, 0);
         }
      }
-   }, [messages]);
+   }, [messages]); // Dependency: messages array
 
    // Focus input when chat opens
    useEffect(() => {
@@ -71,14 +71,17 @@ export function ChatBubble() {
      setInputValue(''); // Clear input field
      setIsLoading(true); // Set loading state
 
-     // Prepare history for the AI (exclude IDs)
-     const historyForAI: ChatMessage[] = messages.map(({ role, content }) => ({ role, content }));
-       // Also include the user message we just added to the UI in the history sent to AI
-      historyForAI.push({ role: 'user', content: messageText });
+     // Prepare history for the AI (exclude IDs and the initial greeting for cleaner history)
+     // Only include messages that are not the initial greeting.
+     const historyForAI: ChatMessage[] = messages
+        .filter(msg => msg.id !== 'greeting-1') // Exclude the initial greeting
+        .map(({ role, content }) => ({ role, content })); // Map to the expected format
 
+      // The latest user message should be passed separately in the input object,
+      // not duplicated in the history array sent to the flow.
       const inputForAI: Parameters<typeof chatWithAssistant>[0] = {
-          message: messageText,
-          history: historyForAI, // Send previous messages + current user message
+          message: messageText, // The current message
+          history: historyForAI, // The history *before* the current message
       };
 
      // Log before calling the server action
@@ -95,25 +98,28 @@ export function ChatBubble() {
        const assistantMessage: UIMessage = {
          id: `model-${Date.now()}`,
          role: 'model',
-         content: result.response, // Assuming result has a 'response' property
+         content: result.response, // result now directly matches ChatOutputSchema
        };
        setMessages(prev => [...prev, assistantMessage]);
 
      } catch (error) {
        console.error('[ChatBubble] Error calling chatWithAssistant:', error);
+       // Display the error message received from the flow (if available) or a generic one
+       const errorMessage = (error instanceof Error) ? error.message : 'Sorry, I encountered an issue communicating with the assistant. Please try again later.';
        toast({
          title: 'Chatbot Error',
-         description: 'Sorry, I encountered an issue communicating with the assistant. Please try again later.',
+         description: errorMessage,
          variant: 'destructive',
        });
-        // Optionally add an error message to the chat UI
-        setMessages(prev => [...prev, { id: `error-${Date.now()}`, role: 'model', content: 'Sorry, I had trouble connecting. Please try again.' }]);
+        // Add an error message to the chat UI
+        setMessages(prev => [...prev, { id: `error-${Date.now()}`, role: 'model', content: `Error: ${errorMessage}` }]);
      } finally {
        setIsLoading(false); // Reset loading state
        // Refocus input after response (or error)
        inputRef.current?.focus();
      }
-   }, [inputValue, isLoading, messages, toast]); // Added dependencies
+   // Include `messages` in dependencies as history depends on it.
+   }, [inputValue, isLoading, messages, toast]);
 
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -217,17 +223,18 @@ export function ChatBubble() {
                       >
                         <div
                           className={cn(
-                            "p-2 rounded-lg max-w-[80%] text-sm",
+                            "p-2 rounded-lg max-w-[80%] text-sm break-words", // Added break-words
                             message.role === 'user'
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted text-muted-foreground"
                           )}
                         >
+                          {/* Simple rendering of content */}
                           {message.content}
                         </div>
                       </div>
                     ))}
-                     {/* Optional: Loading indicator */}
+                     {/* Loading indicator */}
                     {isLoading && (
                         <div className="flex justify-start">
                             <div className="bg-muted p-2 rounded-lg max-w-[80%] text-sm text-muted-foreground flex items-center gap-2">
@@ -272,3 +279,4 @@ export function ChatBubble() {
     </>
   );
 }
+
