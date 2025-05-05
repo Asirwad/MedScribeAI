@@ -92,8 +92,8 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
-          // Adjusted flex direction for responsiveness
-          className="relative container mx-auto flex flex-col md:flex-row items-center justify-center gap-12 px-4 py-20 text-center md:text-left md:py-28 lg:py-36 sm:px-6 lg:px-8">
+          // Adjusted padding for large screens
+          className="relative container mx-auto flex flex-col md:flex-row items-center justify-center gap-12 px-4 py-20 text-center md:text-left md:py-28 lg:py-28 sm:px-6 lg:px-8">
 
           {/* Text Content - Left side on desktop */}
            <motion.div
