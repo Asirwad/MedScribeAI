@@ -9,6 +9,7 @@ import { ArrowRight, Bot, Mic, FileText, CheckCircle, Zap, ShieldCheck } from 'l
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ChatBubble } from '@/components/chat-bubble'; // Import the ChatBubble component
+import { FaqSection } from '@/components/faq-section'; // Import the FaqSection component
 
 interface LandingPageProps {
   onEnterApp: () => void;
@@ -300,29 +301,36 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
           </motion.section>
 
 
-        {/* Final CTA Section */}
+        {/* Final CTA & FAQ Section */}
         <motion.section
             initial="hidden"
             whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
-            variants={fadeIn}
+            viewport={{ once: true, amount: 0.2 }} // Trigger when 20% is visible
+            variants={staggerContainer}
             className="py-16 md:py-24 lg:py-32 bg-gradient-to-b from-secondary/30 to-background dark:from-secondary/10 dark:to-background">
-            <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                <motion.h2
-                    variants={slideUp}
-                    className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl mb-6">
-                    Ready to Transform Your Documentation?
-                </motion.h2>
-                <motion.p
-                   variants={slideUp}
-                   className="max-w-2xl mx-auto text-lg text-muted-foreground mb-8">
-                   Experience the efficiency and accuracy of AI-powered clinical documentation. Launch the app and see the difference.
-                </motion.p>
-                <motion.div variants={slideUp}>
-                    <Button onClick={onEnterApp} size="lg" className="rounded-md px-10 py-3 text-lg">
-                        Launch MedScribeAI
-                        <ArrowRight className="ml-2 h-5 w-5" />
-                    </Button>
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-16 items-start"> {/* Use grid for columns */}
+
+                {/* CTA Content (Left Column) */}
+                <motion.div
+                  variants={slideInLeft} // Animate left column
+                  className="text-center lg:text-left">
+                    <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl mb-6">
+                        Ready to Transform Your Documentation?
+                    </h2>
+                    <p className="max-w-2xl mx-auto lg:mx-0 text-lg text-muted-foreground mb-8">
+                       Experience the efficiency and accuracy of AI-powered clinical documentation. Launch the app and see the difference.
+                    </p>
+                    <div> {/* Keep button wrapper */}
+                        <Button onClick={onEnterApp} size="lg" className="rounded-md px-10 py-3 text-lg">
+                            Launch MedScribeAI
+                            <ArrowRight className="ml-2 h-5 w-5" />
+                        </Button>
+                    </div>
+                </motion.div>
+
+                {/* FAQ Section (Right Column) */}
+                <motion.div variants={slideInRight}> {/* Animate right column */}
+                   <FaqSection />
                 </motion.div>
             </div>
         </motion.section>
