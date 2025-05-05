@@ -33,65 +33,50 @@ const ChatOutputSchema = z.object({
 export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 
 // Exported function to be called by the frontend
+// This function will now call the chatbotFlow
 export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
+  console.log("[chatWithAssistant] Entered function with input:", JSON.stringify(input, null, 2));
   try {
-    // Log the input received by the function
-    console.log("[chatWithAssistant] Received input:", JSON.stringify(input, null, 2)); // Pretty print input
+    // Call the Genkit flow defined below
+    console.log("[chatWithAssistant] Calling chatbotFlow...");
+    const flowResult = await chatbotFlow(input);
+    console.log("[chatWithAssistant] chatbotFlow returned:", JSON.stringify(flowResult, null, 2));
 
-    // Call the prompt directly. It returns GenerateResponse.
-    // Add logging before the call
-    console.log("[chatWithAssistant] Calling chatbotPrompt...");
-    const modelResponse: GenerateResponse = await chatbotPrompt(input);
-    // Log the raw response received from the model
-    console.log("[chatWithAssistant] Raw response from chatbotPrompt:", JSON.stringify(modelResponse, null, 2));
-
-    // Extract text using the correct Genkit 1.x syntax (response.text)
-    // Ensure the response object and its text property exist before accessing.
-    const responseText = modelResponse?.text; // Use optional chaining
-
-    // Log the extracted text (or lack thereof)
-    console.log("[chatWithAssistant] Extracted response text:", responseText);
-
-    if (responseText === undefined || responseText === null || responseText.trim() === '') {
-        console.warn("[chatWithAssistant] Received empty, null, undefined, or whitespace-only text response from model.");
-        // Provide a specific message if the response text is effectively empty
-        return { response: "Sorry, I couldn't generate a valid text response." };
+    // Validate the flow result against the expected schema
+    const parsedResult = ChatOutputSchema.safeParse(flowResult);
+    if (!parsedResult.success) {
+        console.error("[chatWithAssistant] Flow result failed schema validation:", parsedResult.error);
+        throw new Error("Chatbot flow returned an unexpected data structure.");
     }
 
-    // Return the structured output
-    console.log("[chatWithAssistant] Successfully generated response:", responseText);
-    return { response: responseText };
+     if (!parsedResult.data.response || parsedResult.data.response.trim() === '') {
+        console.warn("[chatWithAssistant] Received empty or whitespace-only response from flow.");
+        return { response: "Sorry, I couldn't generate a valid response." };
+    }
 
-  } catch (error: unknown) { // Catch unknown to inspect the error type
-      // Log the specific error caught for better debugging
-      console.error("[chatWithAssistant] Error occurred during chatWithAssistant execution:", error);
+    console.log("[chatWithAssistant] Successfully processed request. Returning response:", parsedResult.data.response);
+    return parsedResult.data;
 
-      // Check if it's a GenkitError or a standard Error for potentially more details
-      let errorMessage = "An error occurred while processing your request.";
-      if (error instanceof Error) {
-          // Log more details from the Error object
-          errorMessage = `An error occurred (${error.name}). Please try again later.`;
-          console.error("  Error Name:", error.name);
-          console.error("  Error Message:", error.message);
-          if (error.stack) {
-              console.error("  Error Stack:", error.stack);
-          }
-          // Check for potential Genkit-specific properties if needed, though instanceof Error covers most cases
-      } else {
-          // Handle non-Error types if necessary
-          console.error("  Caught a non-Error exception:", error);
+  } catch (error: unknown) {
+    console.error("[chatWithAssistant] Error executing chatbotFlow:", error);
+    let errorMessage = "An error occurred while processing your chat request.";
+    if (error instanceof Error) {
+      errorMessage = `Error: ${error.message}. Please try again.`;
+      console.error("  Error Name:", error.name);
+      console.error("  Error Message:", error.message);
+      if (error.stack) {
+          console.error("  Error Stack:", error.stack);
       }
-
-      // Return a user-friendly error response
-      return { response: errorMessage };
-      // Do not re-throw unless the caller is prepared to handle it
-      // throw error;
+    } else {
+      console.error("  Caught a non-Error exception:", error);
+    }
+    // Return a user-friendly error response wrapped in the expected schema
+    return { response: errorMessage };
   }
 }
 
 
-// Define the prompt - uses history for context and the default model from ai-instance
-// REMOVED the processor function (second argument)
+// Define the prompt - used internally by the flow
 const chatbotPrompt = ai.definePrompt(
   {
     name: 'chatbotPrompt',
@@ -99,9 +84,8 @@ const chatbotPrompt = ai.definePrompt(
     input: {
       schema: ChatInputSchema,
     },
-    // Output schema is still defined for documentation/validation if needed elsewhere,
-    // but the prompt itself won't automatically format to it without the processor.
-    // Genkit aims to return text by default if no output schema processor is used.
+    // Output schema is NOT strictly enforced by definePrompt itself for the raw LLM call,
+    // but guides the LLM. The flow (`chatbotFlow`) is responsible for structuring the final output.
     // output: {
     //   schema: ChatOutputSchema,
     // },
@@ -121,29 +105,42 @@ Assistant:`,
 );
 
 
-// Define the Genkit flow - this remains largely unchanged but is less critical now
-// as chatWithAssistant calls the prompt directly.
+// Define the Genkit flow - this function orchestrates calling the prompt and formatting the output.
 const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchema>(
   {
     name: 'chatbotFlow',
     inputSchema: ChatInputSchema,
-    outputSchema: ChatOutputSchema,
+    outputSchema: ChatOutputSchema, // Flow ensures output matches this schema
   },
   async (input) => {
-    // Log input for the flow as well
-    console.log("[chatbotFlow] Flow received input:", JSON.stringify(input, null, 2));
+    console.log("[chatbotFlow] Flow entered with input:", JSON.stringify(input, null, 2));
 
-    // Call the prompt. It returns GenerateResponse.
-    const modelResponse = await chatbotPrompt(input);
-    console.log("[chatbotFlow] Raw response from chatbotPrompt within flow:", JSON.stringify(modelResponse, null, 2));
+    try {
+        // Call the underlying prompt. It returns a GenerateResponse object.
+        console.log("[chatbotFlow] Calling chatbotPrompt...");
+        const modelResponse: GenerateResponse = await chatbotPrompt(input);
+        console.log("[chatbotFlow] Raw response from chatbotPrompt:", JSON.stringify(modelResponse, null, 2));
 
-    // Extract text and structure the output according to the flow's outputSchema.
-    const responseText = modelResponse?.text;
-     if (!responseText || responseText.trim() === '') {
-       console.warn("[chatbotFlow] Received empty, null, undefined, or whitespace-only text response from model within flow.");
-       return { response: "Sorry, I couldn't generate a response via the flow." };
-     }
-    console.log("[chatbotFlow] Successfully generated response via flow:", responseText);
-    return { response: responseText };
+        // Extract the text content using the correct Genkit 1.x syntax (response.text)
+        const responseText = modelResponse?.text;
+        console.log("[chatbotFlow] Extracted text from model response:", responseText);
+
+        // Check if the extracted text is valid
+        if (responseText === undefined || responseText === null || responseText.trim() === '') {
+            console.warn("[chatbotFlow] Received empty, null, undefined, or whitespace-only text response from model.");
+            // Return a specific message adhering to the output schema
+            return { response: "Sorry, I couldn't generate a valid text response." };
+        }
+
+        // Structure the output according to the flow's outputSchema.
+        console.log("[chatbotFlow] Successfully generated response via flow:", responseText);
+        return { response: responseText };
+
+    } catch (error) {
+        console.error("[chatbotFlow] Error occurred during flow execution:", error);
+         // Re-throw the error so the caller (chatWithAssistant) can handle it.
+         // This ensures the error propagates correctly.
+         throw error; // Or wrap in a new error: throw new Error(`Chatbot flow failed: ${error}`);
+    }
   }
 );

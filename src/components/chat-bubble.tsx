@@ -76,31 +76,38 @@ export function ChatBubble() {
        // Also include the user message we just added to the UI in the history sent to AI
       historyForAI.push({ role: 'user', content: messageText });
 
+      const inputForAI: Parameters<typeof chatWithAssistant>[0] = {
+          message: messageText,
+          history: historyForAI, // Send previous messages + current user message
+      };
+
+     // Log before calling the server action
+     console.log("[ChatBubble] Calling chatWithAssistant with input:", JSON.stringify(inputForAI, null, 2));
 
      try {
-        // Call the Genkit flow
-       const result = await chatWithAssistant({
-         message: messageText,
-         history: historyForAI, // Send previous messages + current user message
-       });
+        // Call the Genkit flow (server action)
+       const result = await chatWithAssistant(inputForAI);
+
+        // Log the result received from the server action
+        console.log("[ChatBubble] Received result from chatWithAssistant:", JSON.stringify(result, null, 2));
 
         // Add AI response to UI
        const assistantMessage: UIMessage = {
          id: `model-${Date.now()}`,
          role: 'model',
-         content: result.response,
+         content: result.response, // Assuming result has a 'response' property
        };
        setMessages(prev => [...prev, assistantMessage]);
 
      } catch (error) {
-       console.error('Chatbot error:', error);
+       console.error('[ChatBubble] Error calling chatWithAssistant:', error);
        toast({
          title: 'Chatbot Error',
-         description: 'Sorry, I encountered an issue. Please try again later.',
+         description: 'Sorry, I encountered an issue communicating with the assistant. Please try again later.',
          variant: 'destructive',
        });
         // Optionally add an error message to the chat UI
-        setMessages(prev => [...prev, { id: `error-${Date.now()}`, role: 'model', content: 'Sorry, I had trouble responding. Please try again.' }]);
+        setMessages(prev => [...prev, { id: `error-${Date.now()}`, role: 'model', content: 'Sorry, I had trouble connecting. Please try again.' }]);
      } finally {
        setIsLoading(false); // Reset loading state
        // Refocus input after response (or error)
