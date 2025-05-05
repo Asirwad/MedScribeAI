@@ -120,12 +120,11 @@ const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchem
       const systemPrompt = `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice. Keep responses brief unless asked for details.`;
 
       // 2. Log arguments before calling ai.generate
+      // Remove the explicit model specification - Genkit will use the default from ai-instance.ts
       const generateArgs = {
          prompt: messagesForAI,
          system: systemPrompt,
          output: { format: 'text' as const }, // Ensure type safety
-         // Specify the model explicitly for clarity, even if it's the default
-         model: ai.getModel(),
       };
       console.log("[chatbotFlow] Calling ai.generate with arguments:", JSON.stringify(generateArgs, null, 2));
 
