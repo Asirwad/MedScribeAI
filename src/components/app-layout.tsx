@@ -35,7 +35,7 @@ import { DeletePatientDialog } from '@/components/delete-patient-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { UpdatePatientForm } from '@/components/update-patient-form';
 import { Input } from '@/components/ui/input'; // Import Input
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'; // Import Tooltip components for search clear
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'; // Import Tooltip components for search clear
 
 interface AppLayoutProps {
   patients: Patient[];
@@ -62,23 +62,25 @@ export function AppLayout({
 }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={initialSidebarOpen}>
-      <AppLayoutContent
-        patients={patients}
-        selectedPatient={selectedPatient}
-        onSelectPatient={onSelectPatient}
-        onAddPatient={onAddPatient}
-        onReturnToLanding={onReturnToLanding}
-        onPatientDeleted={onPatientDeleted}
-        onPatientUpdated={onPatientUpdated}
-      >
-        {children}
-      </AppLayoutContent>
+       <TooltipProvider> {/* Ensure TooltipProvider wraps the layout */}
+        <AppLayoutContent
+          patients={patients}
+          selectedPatient={selectedPatient}
+          onSelectPatient={onSelectPatient}
+          onAddPatient={onAddPatient}
+          onReturnToLanding={onReturnToLanding}
+          onPatientDeleted={onPatientDeleted}
+          onPatientUpdated={onPatientUpdated}
+        >
+          {children}
+        </AppLayoutContent>
+       </TooltipProvider>
     </SidebarProvider>
   );
 }
 
 // Helper function for highlighting search terms
-const HighlightedText = ({ text, highlight }: { text: string; highlight: string }) => {
+const HighlightedText = ({ text, highlight, isSelected }: { text: string; highlight: string; isSelected: boolean }) => {
   if (!highlight) {
     return <span>{text}</span>;
   }
@@ -87,7 +89,14 @@ const HighlightedText = ({ text, highlight }: { text: string; highlight: string 
     <span>
       {parts.map((part, index) =>
         part.toLowerCase() === highlight.toLowerCase() ? (
-          <strong key={index} className="font-bold text-primary">
+          <strong
+            key={index}
+             // Apply different styling based on selection
+             className={cn(
+                "font-bold",
+                isSelected ? "text-primary-foreground/80" : "text-primary" // Use foreground color variant for selected, primary for others
+             )}
+          >
             {part}
           </strong>
         ) : (
@@ -256,57 +265,60 @@ function AppLayoutContent({
                         {searchQuery ? 'No patients match your search.' : 'No patients added yet.'}
                     </p>
                   )}
-                  {filteredPatients.map((patient) => (
-                    <SidebarMenuItem key={patient.id} className="group/menu-item">
-                       <div className="flex items-center w-full">
-                          <SidebarMenuButton
-                            className="flex-grow justify-start font-normal pr-8"
-                            isActive={selectedPatient?.id === patient.id}
-                            onClick={() => handlePatientSelectAndClose(patient.id)}
-                            tooltip={patient.name}
-                          >
-                             <Users />
-                             {/* Use HighlightedText component */}
-                             <span className="truncate">
-                                 <HighlightedText text={patient.name} highlight={searchQuery} />
-                             </span>
-                          </SidebarMenuButton>
+                  {filteredPatients.map((patient) => {
+                    const isSelected = selectedPatient?.id === patient.id; // Check if current item is selected
+                    return (
+                        <SidebarMenuItem key={patient.id} className="group/menu-item">
+                           <div className="flex items-center w-full">
+                              <SidebarMenuButton
+                                className="flex-grow justify-start font-normal pr-8"
+                                isActive={isSelected}
+                                onClick={() => handlePatientSelectAndClose(patient.id)}
+                                tooltip={patient.name}
+                              >
+                                 <Users />
+                                 {/* Use HighlightedText component, pass isSelected */}
+                                 <span className="truncate">
+                                     <HighlightedText text={patient.name} highlight={searchQuery} isSelected={isSelected} />
+                                 </span>
+                              </SidebarMenuButton>
 
-                           <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 text-muted-foreground opacity-0 group-hover/menu-item:opacity-100 focus:opacity-100 group-data-[state=open]:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden"
+                               <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 text-muted-foreground opacity-0 group-hover/menu-item:opacity-100 focus:opacity-100 group-data-[state=open]:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                         <MoreVertical className="h-4 w-4" />
+                                         <span className="sr-only">Patient Options</span>
+                                      </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    side="right"
+                                    align="start"
+                                    className="w-48"
                                     onClick={(e) => e.stopPropagation()}
-                                  >
-                                     <MoreVertical className="h-4 w-4" />
-                                     <span className="sr-only">Patient Options</span>
-                                  </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent
-                                side="right"
-                                align="start"
-                                className="w-48"
-                                onClick={(e) => e.stopPropagation()}
-                               >
-                                  <DropdownMenuItem onClick={() => handleUpdateClick(patient)}>
-                                     <Edit className="mr-2 h-4 w-4" />
-                                     <span>Update Info</span>
-                                  </DropdownMenuItem>
-                                 <DropdownMenuSeparator />
-                                 <DropdownMenuItem
-                                    className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                                    onClick={() => handleDeleteClick(patient)}
-                                 >
-                                     <Trash2 className="mr-2 h-4 w-4" />
-                                     <span>Delete Patient</span>
-                                 </DropdownMenuItem>
-                              </DropdownMenuContent>
-                           </DropdownMenu>
-                       </div>
-                    </SidebarMenuItem>
-                  ))}
+                                   >
+                                      <DropdownMenuItem onClick={() => handleUpdateClick(patient)}>
+                                         <Edit className="mr-2 h-4 w-4" />
+                                         <span>Update Info</span>
+                                      </DropdownMenuItem>
+                                     <DropdownMenuSeparator />
+                                     <DropdownMenuItem
+                                        className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                        onClick={() => handleDeleteClick(patient)}
+                                     >
+                                         <Trash2 className="mr-2 h-4 w-4" />
+                                         <span>Delete Patient</span>
+                                     </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                               </DropdownMenu>
+                           </div>
+                        </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -385,3 +397,6 @@ function MobileHeader({ onReturnToLanding }: { onReturnToLanding: () => void }) 
      </header>
   );
 }
+
+
+    
