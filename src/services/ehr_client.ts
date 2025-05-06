@@ -15,6 +15,7 @@ import {
     serverTimestamp, // For setting creation time automatically
     writeBatch, // Import writeBatch for atomic deletes
     deleteDoc, // Import deleteDoc
+    updateDoc, // Import updateDoc
 } from 'firebase/firestore';
 
 /**
@@ -155,6 +156,9 @@ export async function getPatientsList(): Promise<Patient[]> {
              console.error("Firestore request unauthenticated. Ensure user is logged in or rules allow public access.");
         } else if (error.code === 'unavailable') {
             console.error("Firestore service unavailable. Check Firebase status or network connection.");
+        } else {
+             // Log generic error message if code is not recognized
+             console.error("An unexpected error occurred while fetching the patients list.");
         }
         // Re-throw a user-friendly error, but the detailed one is logged above
         throw new Error('Failed to fetch patients list from Firestore. Check console/logs for details.');
@@ -287,6 +291,25 @@ export async function createPatient(patientData: Omit<Patient, 'id'>): Promise<P
     } catch (error) {
         console.error('Error creating patient in Firestore:', error);
         throw new Error('Failed to create patient in Firestore.');
+    }
+}
+
+/**
+ * Asynchronously updates an existing patient's details in Firestore.
+ *
+ * @param patientId The ID of the patient to update.
+ * @param updatedData An object containing the fields to update.
+ * @returns A promise that resolves when the update is complete.
+ * @throws An error if updating the document fails.
+ */
+export async function updatePatient(patientId: string, updatedData: Partial<Omit<Patient, 'id'>>): Promise<void> {
+    try {
+        const patientDocRef = doc(db, 'patients', patientId);
+        await updateDoc(patientDocRef, updatedData);
+        console.log(`[EHR Client] Updated PATIENT with ID: ${patientId} in Firestore.`);
+    } catch (error) {
+        console.error(`Error updating patient ${patientId}:`, error);
+        throw new Error(`Failed to update patient ${patientId} in Firestore.`);
     }
 }
 

@@ -29,9 +29,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator, // Added separator
 } from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
 import { DeletePatientDialog } from '@/components/delete-patient-dialog'; // Import the new dialog
 import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { UpdatePatientForm } from '@/components/update-patient-form'; // Import the new form
 
 interface AppLayoutProps {
   patients: Patient[];
@@ -41,6 +43,8 @@ interface AppLayoutProps {
   onReturnToLanding: () => void;
   // Add a callback for after patient deletion
   onPatientDeleted: (deletedPatientId: string) => void;
+  // Add a callback for after patient update
+  onPatientUpdated: (updatedPatientId: string, updatedData: Omit<Patient, 'id'>) => Promise<void>;
   children: React.ReactNode;
   initialSidebarOpen?: boolean;
 }
@@ -52,6 +56,7 @@ export function AppLayout({
   onAddPatient,
   onReturnToLanding,
   onPatientDeleted, // Receive the callback
+  onPatientUpdated, // Receive the callback
   children,
   initialSidebarOpen = true,
 }: AppLayoutProps) {
@@ -65,6 +70,7 @@ export function AppLayout({
         onAddPatient={onAddPatient}
         onReturnToLanding={onReturnToLanding}
         onPatientDeleted={onPatientDeleted} // Pass callback down
+        onPatientUpdated={onPatientUpdated} // Pass callback down
       >
         {children}
       </AppLayoutContent>
@@ -80,11 +86,14 @@ function AppLayoutContent({
   onAddPatient,
   onReturnToLanding,
   onPatientDeleted, // Receive callback
+  onPatientUpdated, // Receive callback
   children,
 }: Omit<AppLayoutProps, 'initialSidebarOpen'>) {
   const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false); // State for update dialog
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const [patientToUpdate, setPatientToUpdate] = useState<Patient | null>(null); // State for patient to update
   const { toast } = useToast();
 
   const handlePatientSelectAndClose = (patientId: string) => {
@@ -97,6 +106,11 @@ function AppLayoutContent({
   const handleDeleteClick = (patient: Patient) => {
      setPatientToDelete(patient);
      setIsDeleteDialogOpen(true);
+  };
+
+  const handleUpdateClick = (patient: Patient) => {
+      setPatientToUpdate(patient);
+      setIsUpdateDialogOpen(true);
   };
 
   const handleConfirmDelete = async () => {
@@ -119,6 +133,28 @@ function AppLayoutContent({
              variant: "destructive",
           });
       }
+  };
+
+  // Handler for confirming patient update
+  const handleConfirmUpdate = async (updatedData: Omit<Patient, 'id'>) => {
+     if (!patientToUpdate) return;
+
+     try {
+         await onPatientUpdated(patientToUpdate.id, updatedData); // Call parent handler
+         toast({
+             title: "Patient Updated",
+             description: `${updatedData.name}'s details have been updated.`,
+         });
+         setPatientToUpdate(null);
+         setIsUpdateDialogOpen(false);
+     } catch (error) {
+         console.error('Error updating patient:', error);
+         toast({
+             title: "Update Failed",
+             description: `Could not update ${patientToUpdate?.name}'s details. Please try again.`,
+             variant: "destructive",
+         });
+     }
   };
 
   return (
@@ -172,17 +208,18 @@ function AppLayoutContent({
                               <DropdownMenuContent
                                 side="right"
                                 align="start"
-                                className="w-40"
+                                className="w-48" // Slightly wider for clarity
                                 onClick={(e) => e.stopPropagation()} // Prevent closing sidebar on mobile
                                >
                                  {/* <DropdownMenuItem disabled>
-                                    <Edit className="mr-2 h-4 w-4" />
+                                    <Pencil className="mr-2 h-4 w-4" />
                                     <span>Rename</span>
-                                 </DropdownMenuItem>
-                                 <DropdownMenuItem disabled>
-                                     <Users className="mr-2 h-4 w-4" />
-                                     <span>Update Info</span>
                                  </DropdownMenuItem> */}
+                                  <DropdownMenuItem onClick={() => handleUpdateClick(patient)}>
+                                     <Edit className="mr-2 h-4 w-4" />
+                                     <span>Update Info</span>
+                                  </DropdownMenuItem>
+                                 <DropdownMenuSeparator />
                                  <DropdownMenuItem
                                     className="text-destructive focus:bg-destructive/10 focus:text-destructive"
                                     onClick={() => handleDeleteClick(patient)}
@@ -231,6 +268,15 @@ function AppLayoutContent({
             patientName={patientToDelete?.name ?? ''}
             onConfirm={handleConfirmDelete}
         />
+        {/* Update Patient Form Dialog */}
+        {patientToUpdate && (
+          <UpdatePatientForm
+            isOpen={isUpdateDialogOpen}
+            onOpenChange={setIsUpdateDialogOpen}
+            patientData={patientToUpdate}
+            onPatientUpdated={handleConfirmUpdate} // Pass the update handler
+          />
+        )}
     </>
   );
 }

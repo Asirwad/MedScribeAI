@@ -17,6 +17,7 @@ import {
     getPatientsList, // Import the new function to get all patients
     addObservation, // Import addObservation
     addEncounter,   // Import addEncounter
+    updatePatient, // Import updatePatient
     getCurrentDateString, // Import date helper
     deletePatientAndRelatedData, // Import the delete function
 } from '@/services/ehr_client';
@@ -32,6 +33,7 @@ import { AgentVisualizationOverlay, AgentState } from '@/components/agent-visual
 import { LandingPage } from '@/components/landing-page'; // Import the LandingPage component
 import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 import { cn } from '@/lib/utils'; // Import cn
+import { ChatBubble } from '@/components/chat-bubble'; // Import ChatBubble
 
 // Minimum time (in ms) to display each agent state in the overlay
 const MIN_AGENT_STATE_DISPLAY_TIME = 1500;
@@ -53,8 +55,8 @@ export default function Home() {
   const [isFetchingPatientDetails, setIsFetchingPatientDetails] = useState<boolean>(false); // Specific state for details fetching
   const [patientHistory, setPatientHistory] = useState<string>('');
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
-  const [agentState, setAgentState] = useState<AgentState>('idle');
   const agentStateTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [agentState, setAgentState] = useState<AgentState>('idle');
   const [isListening, setIsListening] = useState<boolean>(false);
   const [isSidebarInitiallyOpen, setIsSidebarInitiallyOpen] = useState(false); // Control initial sidebar state after landing
   const isMobile = useIsMobile(); // Check if mobile
@@ -210,9 +212,9 @@ export default function Home() {
 
 
    // Function to load the patient list from Firestore
-   const loadPatientsList = useCallback(async (selectFirst = false, newPatientId: string | null = null) => {
+   const loadPatientsList = useCallback(async (selectFirst = false, patientIdToSelect: string | null = null) => {
      if (isFetchingPatientList) return; // Prevent concurrent fetches
-     console.log(`[loadPatientsList] Triggered. selectFirst=${selectFirst}, newPatientId=${newPatientId}`); // Add log
+     console.log(`[loadPatientsList] Triggered. selectFirst=${selectFirst}, patientIdToSelect=${patientIdToSelect}`); // Add log
      setIsFetchingPatientList(true);
      try {
          const patientList = await getPatientsList();
@@ -220,38 +222,50 @@ export default function Home() {
          setPatients(patientList);
 
          // Determine which patient to select after loading
-         let patientToSelectId: string | null = null;
-         if (newPatientId && patientList.some(p => p.id === newPatientId)) {
-             patientToSelectId = newPatientId; // Select the newly added patient if they exist in the list
-         } else if (selectFirst && patientList.length > 0) {
-             patientToSelectId = patientList[0].id; // Select the first patient if requested and list is not empty
+         let finalPatientIdToSelect: string | null = null;
+
+         if (patientIdToSelect && patientList.some(p => p.id === patientIdToSelect)) {
+             // If a specific ID was provided and exists, use it
+             finalPatientIdToSelect = patientIdToSelect;
+             console.log(`[loadPatientsList] Selecting provided patient ID: ${finalPatientIdToSelect}`);
          } else if (selectedPatient && patientList.some(p => p.id === selectedPatient.id)) {
-             // Keep current selection if it still exists in the list and no other instruction was given
-             patientToSelectId = selectedPatient.id;
-         } else if (selectFirst && patientList.length === 0) {
-             // If selectFirst requested but list is empty
-             patientToSelectId = null;
+             // If no specific ID or invalid ID provided, keep current selection if it exists in the new list
+             finalPatientIdToSelect = selectedPatient.id;
+             console.log(`[loadPatientsList] Keeping current selection: ${finalPatientIdToSelect}`);
+         } else if (selectFirst && patientList.length > 0) {
+             // If selectFirst requested and list is not empty, select the first
+             finalPatientIdToSelect = patientList[0].id;
+             console.log(`[loadPatientsList] Selecting first patient: ${finalPatientIdToSelect}`);
+         } else {
+             // Otherwise (empty list, or current selection removed and selectFirst=false), select none
+              finalPatientIdToSelect = null;
+              console.log(`[loadPatientsList] No patient selected or list empty.`);
          }
 
-         if (patientToSelectId && fetchPatientDataRef.current) {
-             console.log(`[loadPatientsList] Selecting patient: ${patientToSelectId}`);
-             // Only fetch data if the selected ID is different from the currently selected patient
-             // or if no patient is currently selected
-             if (!selectedPatient || selectedPatient.id !== patientToSelectId) {
-                // Always clear generated fields when selecting from the list
-                await fetchPatientDataRef.current(patientToSelectId, true);
+
+         // Fetch data for the determined patient ID
+         if (finalPatientIdToSelect && fetchPatientDataRef.current) {
+             console.log(`[loadPatientsList] Fetching data for patient: ${finalPatientIdToSelect}`);
+             // Fetch data only if the selection changes or if no patient was previously selected
+             if (!selectedPatient || selectedPatient.id !== finalPatientIdToSelect) {
+                 await fetchPatientDataRef.current(finalPatientIdToSelect, true); // Clear generated fields on selection change
              } else {
-                 console.log(`[loadPatientsList] Patient ${patientToSelectId} is already selected. Skipping data fetch.`);
+                  // Even if selection is the same, refetch data if requested (e.g., after update)
+                  // Check if the patientIdToSelect matches the currently selected one
+                  if (patientIdToSelect === selectedPatient.id) {
+                      console.log(`[loadPatientsList] Refetching data for currently selected patient: ${finalPatientIdToSelect}`);
+                      await fetchPatientDataRef.current(finalPatientIdToSelect, false); // Don't clear fields on explicit refetch
+                  } else {
+                     console.log(`[loadPatientsList] Patient ${finalPatientIdToSelect} is already selected and no specific refetch requested. Skipping data fetch.`);
+                  }
              }
          } else if (patientList.length === 0) {
              console.log("[loadPatientsList] No patients found, resetting app state.");
              resetAppState(); // Reset if no patients are available
-         } else {
-              console.log("[loadPatientsList] No specific patient selected after loading list.");
-              // If no patient ID was determined to be selected (e.g., after deleting the last one), reset the state
-              if (!patientToSelectId) {
-                 resetAppState();
-              }
+         } else if (!finalPatientIdToSelect) {
+             // If no patient ended up being selected (e.g., after deleting the last one)
+             console.log("[loadPatientsList] Final selection is null, resetting app state.");
+             resetAppState();
          }
 
      } catch (error) {
@@ -586,6 +600,34 @@ export default function Home() {
       }
   };
 
+
+   // Handler for updating an existing patient
+   const handlePatientUpdated = async (patientId: string, updatedData: Omit<Patient, 'id'>) => {
+       console.log(`[handlePatientUpdated] called for ID: ${patientId}`);
+       try {
+           await updatePatient(patientId, updatedData); // Update in DB
+           console.log(`[handlePatientUpdated] Patient ${patientId} updated in DB.`);
+           // Reload the patient list to reflect changes, keeping the updated patient selected
+           if (loadPatientsListRef.current) {
+               // Pass the updated patient's ID to keep it selected
+               await loadPatientsListRef.current(false, patientId);
+           } else {
+               console.error("loadPatientsList function reference not available after update.");
+                // Fallback: manually update local state if reload fails
+                setPatients(prev => prev.map(p => p.id === patientId ? { ...p, ...updatedData } : p));
+                if (selectedPatient?.id === patientId) {
+                    setSelectedPatient(prev => prev ? { ...prev, ...updatedData } : null);
+                }
+           }
+           // Note: Success toast is handled in AppLayout after this function resolves
+       } catch (error) {
+           console.error(`[handlePatientUpdated] Error updating patient ${patientId}:`, error);
+           // Re-throw the error to be handled by AppLayout (which shows a toast)
+           throw error;
+       }
+   };
+
+
   // Handler for deleting a patient
    const handlePatientDeleted = async (patientId: string) => {
       console.log(`[handlePatientDeleted] Attempting to delete patient: ${patientId}`);
@@ -672,7 +714,12 @@ export default function Home() {
 
   // If showLandingPage is true, render only the LandingPage component
   if (showLandingPage) {
-      return <LandingPage onEnterApp={handleEnterApp} />;
+      return (
+        <>
+         <LandingPage onEnterApp={handleEnterApp} />
+         <ChatBubble /> {/* Keep ChatBubble on Landing Page */}
+        </>
+      );
   }
 
   // Otherwise, render the main application layout
@@ -686,6 +733,7 @@ export default function Home() {
       initialSidebarOpen={isSidebarInitiallyOpen} // Pass the initial state
       onReturnToLanding={handleReturnToLanding} // Pass the return function
       onPatientDeleted={handlePatientDeleted} // Pass the delete handler
+      onPatientUpdated={handlePatientUpdated} // Pass the update handler
     >
         {/* Main content area using grid for desktop layout */}
         {/* Apply a subtle background pattern or gradient for depth */}
@@ -763,6 +811,7 @@ export default function Home() {
        onOpenChange={setIsAddPatientDialogOpen}
        onPatientAdded={handlePatientAdded} // Use updated handler
      />
+      <ChatBubble /> {/* Add ChatBubble to the main app view as well */}
      </>
   );
 }
