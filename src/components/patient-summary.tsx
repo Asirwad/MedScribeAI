@@ -45,6 +45,8 @@ const observationCodeMap: { [key: string]: string } = {
   'oxygen_saturation': 'Oxygen Saturation',
   'ChiefComplaint': 'Chief Complaint', // Added from saveNote
   'ObjectiveSummary': 'Objective Findings', // Added from saveNote
+  'PlanSummary': 'Plan Summary', // Added from saveNote
+  'Diagnosis': 'Diagnosis', // Added from saveNote
   // Add more mappings as needed
 };
 
@@ -64,6 +66,18 @@ const getReadableName = (code: string, map: { [key: string]: string }): string =
     return map[code] || code; // Return mapped name or original code if not found
 };
 
+// Function to group observations by date
+const groupObservationsByDate = (observations: Observation[]): Record<string, Observation[]> => {
+    const grouped: Record<string, Observation[]> = {};
+    observations.forEach(obs => {
+        const dateKey = obs.date; // Use the YYYY-MM-DD string as the key
+        if (!grouped[dateKey]) {
+            grouped[dateKey] = [];
+        }
+        grouped[dateKey].push(obs);
+    });
+    return grouped;
+};
 
 export function PatientSummary({ patient, observations, encounters, isLoading }: PatientSummaryProps) {
   if (isLoading) {
@@ -120,6 +134,9 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
 
   // Format patient DOB
   const formattedDOB = formatDate(patient.dateOfBirth);
+  const groupedObservations = groupObservationsByDate(observations);
+  // Sort dates descending (most recent first)
+  const sortedDates = Object.keys(groupedObservations).sort((a, b) => b.localeCompare(a));
 
 
   return (
@@ -141,24 +158,29 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
           {/* Adjust background for better visibility with blur */}
           <ScrollArea className="h-40 border border-border/30 rounded-md p-2 bg-secondary/30">
             {observations.length > 0 ? (
-              <ul className="space-y-2 text-sm text-foreground/90"> {/* Slightly adjust text opacity and spacing */}
-                {observations.map((obs, index) => (
-                  <li key={obs.id} className="flex flex-wrap items-center gap-x-2 gap-y-1"> {/* Use flex for alignment */}
-                     {/* Use readable name for code */}
-                    <strong className="font-medium">{getReadableName(obs.code, observationCodeMap)}:</strong>
-                    <span>{obs.value}{obs.units ? ` ${obs.units}` : ''}</span>
-                    {/* Date Badges */}
-                    <div className="flex items-center gap-1">
-                         <Badge variant="secondary" className="whitespace-nowrap">{formatDate(obs.date)}</Badge>
-                         {index === 0 && ( // Add 'New' badge only for the first item
-                            <Badge variant="default" className="bg-green-100 text-green-800 text-xs font-medium hover:bg-green-200 me-2 px-2.5 py-0.5 rounded-sm dark:bg-green-900 dark:text-green-300">New</Badge>
-                         )}
+              <div className="space-y-3 text-sm text-foreground/90"> {/* Space between date groups */}
+                 {sortedDates.map((dateKey, dateIndex) => (
+                    <div key={dateKey} className="pl-1">
+                        <div className="flex items-center gap-2 mb-1">
+                            {/* Display date as a badge */}
+                            <Badge variant="secondary" className="whitespace-nowrap">{formatDate(dateKey)}</Badge>
+                            {dateIndex === 0 && ( // Add 'New' badge only for the most recent date group
+                                <Badge variant="default" className="bg-green-100 text-green-800 text-xs font-medium hover:bg-green-200 me-2 px-2.5 py-0.5 rounded-sm dark:bg-green-900 dark:text-green-300">New</Badge>
+                            )}
+                        </div>
+                        <ul className="space-y-1 pl-3 border-l border-border/50 ml-2"> {/* Indent observations under date */}
+                        {groupedObservations[dateKey].map((obs) => (
+                            <li key={obs.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5"> {/* Reduced gap-y */}
+                                <strong className="font-medium">{getReadableName(obs.code, observationCodeMap)}:</strong>
+                                <span>{obs.value}{obs.units ? ` ${obs.units}` : ''}</span>
+                            </li>
+                        ))}
+                        </ul>
                     </div>
-                  </li>
-                ))}
-              </ul>
+                 ))}
+              </div>
             ) : (
-              <p className="text-muted-foreground text-sm">No recent observations found.</p>
+              <p className="text-muted-foreground text-sm p-4 text-center">No recent observations found.</p> // Centered text
             )}
           </ScrollArea>
         </div>
@@ -184,7 +206,7 @@ export function PatientSummary({ patient, observations, encounters, isLoading }:
                   ))}
                 </ul>
               ) : (
-                 <p className="text-muted-foreground text-sm">No recent encounters found.</p>
+                 <p className="text-muted-foreground text-sm p-4 text-center">No recent encounters found.</p> // Centered text
               )}
           </ScrollArea>
         </div>
