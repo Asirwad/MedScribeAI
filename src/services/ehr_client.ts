@@ -40,6 +40,7 @@ export interface Patient {
 
 /**
  * Represents a clinical observation for a patient in Firestore.
+ * This is for specific, measurable data points (e.g., vitals, labs).
  */
 export interface Observation {
     /**
@@ -47,15 +48,15 @@ export interface Observation {
      */
     id: string;
     /**
-     * The observation's type or code (e.g., blood_pressure).
+     * The observation's type or code (e.g., 'blood_pressure', 'heart_rate', 'ChiefComplaint').
      */
     code: string;
     /**
-     * The observation's value.
+     * The observation's measured value (e.g., '120/80', '72').
      */
     value: string;
     /**
-     * The units of the observation value.
+     * The units of the observation value (e.g., 'mmHg', 'bpm').
      */
     units?: string;
     /**
@@ -72,6 +73,7 @@ export interface Observation {
 
 /**
  * Represents a patient encounter in Firestore.
+ * This is for visits or interactions (e.g., outpatient, emergency).
  */
 export interface Encounter {
     /**
@@ -79,7 +81,7 @@ export interface Encounter {
      */
     id: string;
     /**
-     * The encounter's type or class (e.g., outpatient).
+     * The encounter's type or class (e.g., 'outpatient', 'emergency').
      */
     class: string;
     /**
@@ -91,7 +93,7 @@ export interface Encounter {
      */
     endDate?: string;
     /**
-     * The reason for the encounter.
+     * The primary reason for the encounter (e.g., 'Follow-up', 'Annual physical').
      */
     reason?: string;
     /**
@@ -104,7 +106,7 @@ export interface Encounter {
 }
 
 /**
- * Represents a clinical note in Firestore.
+ * Represents a clinical note (like a SOAP note) in Firestore.
  */
 export interface Note {
     id: string;
@@ -183,7 +185,7 @@ export async function getPatient(patientId: string): Promise<Patient | null> {
 }
 
 /**
- * Asynchronously retrieves recent observations for a patient from Firestore.
+ * Asynchronously retrieves recent observations (specific measurements) for a patient from Firestore.
  *
  * @param patientId The ID of the patient to retrieve observations for.
  * @param count The maximum number of observations to retrieve.
@@ -201,7 +203,7 @@ export async function getObservations(patientId: string, count: number = 5): Pro
         );
         const snapshot = await getDocs(q);
         const observations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Observation));
-        console.log(`[EHR Client] Fetched ${observations.length} observations for patient: ${patientId} from Firestore.`);
+        console.log(`[EHR Client] Fetched ${observations.length} OBSERVATIONS for patient: ${patientId} from Firestore.`);
         return observations;
     } catch (error) {
         console.error(`Error fetching observations for patient ${patientId}:`, error);
@@ -211,7 +213,7 @@ export async function getObservations(patientId: string, count: number = 5): Pro
 }
 
 /**
- * Asynchronously retrieves recent encounters for a patient from Firestore.
+ * Asynchronously retrieves recent encounters (visits/interactions) for a patient from Firestore.
  *
  * @param patientId The ID of the patient to retrieve encounters for.
  * @param count The maximum number of encounters to retrieve.
@@ -229,7 +231,7 @@ export async function getEncounters(patientId: string, count: number = 5): Promi
         );
         const snapshot = await getDocs(q);
         const encounters = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Encounter));
-        console.log(`[EHR Client] Fetched ${encounters.length} encounters for patient: ${patientId} from Firestore.`);
+        console.log(`[EHR Client] Fetched ${encounters.length} ENCOUNTERS for patient: ${patientId} from Firestore.`);
         return encounters;
     } catch (error) {
         console.error(`Error fetching encounters for patient ${patientId}:`, error);
@@ -239,7 +241,7 @@ export async function getEncounters(patientId: string, count: number = 5): Promi
 }
 
 /**
- * Asynchronously posts a clinical note to Firestore.
+ * Asynchronously posts a clinical note (SOAP note) to Firestore.
  *
  * @param patientId The ID of the patient the note belongs to.
  * @param noteContent The content of the note to post.
@@ -254,8 +256,8 @@ export async function postNote(patientId: string, noteContent: string): Promise<
             content: noteContent,
             createdAt: serverTimestamp(), // Use server timestamp
         });
-        console.log(`[EHR Client] Posted note with ID: ${docRef.id} for patient ${patientId} to Firestore.`);
-        console.log(`[EHR Client] Note content: ${noteContent.substring(0, 100)}...`);
+        console.log(`[EHR Client] Posted NOTE with ID: ${docRef.id} for patient ${patientId} to Firestore.`);
+        // console.log(`[EHR Client] Note content: ${noteContent.substring(0, 100)}...`); // Optional: Log snippet
     } catch (error) {
         console.error(`Error posting note for patient ${patientId}:`, error);
         throw new Error(`Failed to post note for patient ${patientId} to Firestore.`);
@@ -276,7 +278,7 @@ export async function createPatient(patientData: Omit<Patient, 'id'>): Promise<P
             ...patientData,
             // createdAt: serverTimestamp(), // Optional: Add creation timestamp
         });
-        console.log(`[EHR Client] Created new patient with ID: ${docRef.id} - ${patientData.name} in Firestore.`);
+        console.log(`[EHR Client] Created new PATIENT with ID: ${docRef.id} - ${patientData.name} in Firestore.`);
         // Return the full patient object including the new ID
         return { ...patientData, id: docRef.id };
     } catch (error) {
@@ -288,6 +290,7 @@ export async function createPatient(patientData: Omit<Patient, 'id'>): Promise<P
 
 /**
  * Asynchronously adds a new observation for a patient to Firestore.
+ * This is typically used when saving derived data from a note (e.g., chief complaint).
  *
  * @param patientId The ID of the patient the observation belongs to.
  * @param observationData Data for the new observation (code, value, units, date).
@@ -304,7 +307,7 @@ export async function addObservation(
             patientId: patientId,
             // recordedAt: serverTimestamp(), // Optional: Use server timestamp for recorded time
         });
-        console.log(`[EHR Client] Added observation with ID: ${docRef.id} for patient ${patientId}. Code: ${observationData.code}`);
+        console.log(`[EHR Client] Added OBSERVATION with ID: ${docRef.id} for patient ${patientId}. Code: ${observationData.code}`);
         return { ...observationData, patientId, id: docRef.id };
     } catch (error) {
         console.error(`Error adding observation for patient ${patientId}:`, error);
@@ -314,6 +317,7 @@ export async function addObservation(
 
 /**
  * Asynchronously adds a new encounter for a patient to Firestore.
+ * This is typically used when saving a note to represent the visit itself.
  *
  * @param patientId The ID of the patient the encounter belongs to.
  * @param encounterData Data for the new encounter (class, startDate, endDate, reason).
@@ -330,7 +334,7 @@ export async function addEncounter(
             patientId: patientId,
             // startedAt: serverTimestamp(), // Optional: Use server timestamp
         });
-        console.log(`[EHR Client] Added encounter with ID: ${docRef.id} for patient ${patientId}. Class: ${encounterData.class}`);
+        console.log(`[EHR Client] Added ENCOUNTER with ID: ${docRef.id} for patient ${patientId}. Class: ${encounterData.class}`);
         return { ...encounterData, patientId, id: docRef.id };
     } catch (error) {
         console.error(`Error adding encounter for patient ${patientId}:`, error);

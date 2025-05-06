@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -59,10 +58,10 @@ export default function Home() {
   const isMobile = useIsMobile(); // Check if mobile
 
   const { toast } = useToast();
-  // Declare fetchPatientData function reference before loadPatientsList
+  // Declare function references before they are used in dependencies
   const fetchPatientDataRef = useRef<((patientId: string, clearGeneratedFields?: boolean) => Promise<void>) | null>(null);
-  // Declare loadPatientsList function reference before fetchPatientData
   const loadPatientsListRef = useRef<((selectFirst?: boolean, newPatientId?: string | null) => Promise<void>) | null>(null);
+  const handleGenerateBillingCodesRef = useRef<((noteToCode: string) => Promise<void>) | null>(null);
 
 
   // Helper function to manage agent state transitions with minimum display time
@@ -171,11 +170,19 @@ export default function Home() {
       setEncounters(encData);
 
       // Generate patient history string from fetched data
-      const history = `
-        Patient: ${patientData.name}, DOB: ${patientData.dateOfBirth}, Gender: ${patientData.gender}
-        Recent Observations: ${obsData.slice(0, 3).map(o => `${o.code}: ${o.value} ${o.units || ''} (${o.date})`).join('; ') || 'None'}
-        Recent Encounters: ${encData.slice(0, 3).map(e => `${e.startDate}: ${e.class} - ${e.reason || 'N/A'}`).join('; ') || 'None'}
-      `.trim();
+       // Ensure data exists before accessing properties
+        const patientName = patientData?.name ?? 'N/A';
+        const patientDOB = patientData?.dateOfBirth ?? 'N/A';
+        const patientGender = patientData?.gender ?? 'N/A';
+
+        const recentObsSummary = obsData?.slice(0, 3).map(o => `${o.code}: ${o.value} ${o.units || ''} (${o.date})`).join('; ') || 'None';
+        const recentEncSummary = encData?.slice(0, 3).map(e => `${e.startDate}: ${e.class} - ${e.reason || 'N/A'}`).join('; ') || 'None';
+
+        const history = `
+            Patient: ${patientName}, DOB: ${patientDOB}, Gender: ${patientGender}
+            Recent Observations: ${recentObsSummary}
+            Recent Encounters: ${recentEncSummary}
+        `.trim();
       setPatientHistory(history);
       transitionAgentState('fetching_data', 'idle');
 
@@ -379,6 +386,11 @@ export default function Home() {
     }
   }, [toast, transitionAgentState, showLandingPage, isMobile]); // Add isMobile
 
+  // Assign the function to the ref after definition
+  useEffect(() => {
+     handleGenerateBillingCodesRef.current = handleGenerateBillingCodes;
+  }, [handleGenerateBillingCodes]);
+
 
  // Handler for generating SOAP note (Documentation Agent - Step 1)
  const handleGenerateSoapNote = useCallback(async () => {
@@ -409,7 +421,16 @@ export default function Home() {
 
         // IMPORTANT: Now trigger billing code generation using the *newly generated* SOAP note
         // The transition to idle will happen inside handleGenerateBillingCodes on success/error
-        await handleGenerateBillingCodes(result.soapNote);
+        if (handleGenerateBillingCodesRef.current) {
+           await handleGenerateBillingCodesRef.current(result.soapNote);
+        } else {
+            console.error("handleGenerateBillingCodes function reference not available yet.");
+            // Handle the error appropriately, maybe show a toast or reset state
+            toast({ title: 'Code Generation Skipped', description: 'Internal error prevented code suggestion.', variant: 'warning' });
+            transitionAgentState('generating_soap','idle'); // Transition to idle if codes can't be generated
+            setIsGeneratingCodes(false); // Ensure codes state is reset
+            setIsGeneratingSoap(false); // Ensure soap state is reset
+        }
 
 
     } catch (error) {
@@ -421,18 +442,22 @@ export default function Home() {
         transitionAgentState('error'); // Transition to error if SOAP generation fails
     }
     // NOTE: No finally block needed here to reset states, handleGenerateBillingCodes handles it.
- }, [selectedPatient, transcript, patientHistory, toast, handleGenerateBillingCodes, transitionAgentState, showLandingPage, isMobile]); // Add isMobile
+ }, [selectedPatient, transcript, patientHistory, toast, transitionAgentState, showLandingPage, isMobile]); // Removed handleGenerateBillingCodes, uses ref
 
 
  // Basic SOAP note parser (Improve this based on actual LLM output structure)
- const parseSoapNoteForData = (note: string): { assessment: string | null; objectiveSummary: string | null } => {
-    const assessmentMatch = note.match(/Assessment:\s*([\s\S]*?)(Plan:|$)/i);
-    const objectiveMatch = note.match(/Objective:\s*([\s\S]*?)(Assessment:|$)/i);
+ const parseSoapNoteForData = (note: string): { assessment: string | null; objectiveSummary: string | null, subjectiveSummary: string | null, planSummary: string | null } => {
+    const subjectiveMatch = note.match(/Subjective:\s*([\s\S]*?)(Objective:|Assessment:|Plan:|$)/i);
+    const objectiveMatch = note.match(/Objective:\s*([\s\S]*?)(Subjective:|Assessment:|Plan:|$)/i);
+    const assessmentMatch = note.match(/Assessment:\s*([\s\S]*?)(Subjective:|Objective:|Plan:|$)/i);
+    const planMatch = note.match(/Plan:\s*([\s\S]*?)(Subjective:|Objective:|Assessment:|$)/i);
 
-    const assessment = assessmentMatch ? assessmentMatch[1].trim().split('\n')[0] || 'Clinical Assessment' : 'Clinical Assessment'; // Take first line or default
-    const objectiveSummary = objectiveMatch ? objectiveMatch[1].trim().split('\n').slice(0, 2).join('. ') : null; // First few lines of Objective
+    const assessment = assessmentMatch ? assessmentMatch[1].trim().split('\n')[0] || null : null; // Primary diagnosis/assessment
+    const objectiveSummary = objectiveMatch ? objectiveMatch[1].trim().split('\n').slice(0, 2).join('. ') : null; // First few lines of Objective data
+    const subjectiveSummary = subjectiveMatch ? subjectiveMatch[1].trim().split('\n')[0] || null : null; // Patient's main complaint
+    const planSummary = planMatch ? planMatch[1].trim().split('\n')[0] || null : null; // Primary plan item
 
-    return { assessment, objectiveSummary };
+    return { assessment, objectiveSummary, subjectiveSummary, planSummary };
  };
 
 
@@ -448,44 +473,68 @@ export default function Home() {
     try {
       // 1. Save the SOAP Note using postNote
       await postNote(selectedPatient.id, finalNote);
-      // Don't update soapNote state here, let the refetch handle it to avoid potential mismatch if save fails partially
+      console.log(`[handleSaveNote] Successfully posted NOTE for patient ${selectedPatient.id}.`);
 
       // 2. Parse the note to extract data for Observation and Encounter
-      const { assessment, objectiveSummary } = parseSoapNoteForData(finalNote);
+      const { assessment, objectiveSummary, subjectiveSummary, planSummary } = parseSoapNoteForData(finalNote);
       const currentDate = getCurrentDateString();
 
       // 3. Add a new Encounter record for this session
+      // Use the assessment or subjective summary as the reason for the encounter.
+      const encounterReason = assessment || subjectiveSummary || 'Clinical Encounter'; // Default reason
       await addEncounter(selectedPatient.id, {
-          class: 'outpatient', // Or determine dynamically if possible
+          class: 'outpatient', // Example class, adjust if needed
           startDate: currentDate,
-          reason: assessment || 'Follow-up', // Use assessment as reason, or default
+          reason: encounterReason,
           // endDate: currentDate // Optional: Set end date if known
       });
+      console.log(`[handleSaveNote] Successfully added ENCOUNTER for patient ${selectedPatient.id}. Reason: ${encounterReason}`);
 
-       // 4. Add a new Observation based on the note (optional, example: chief complaint or key finding)
-       // This part is highly dependent on what you want to extract and save.
-       // Example: Saving the primary assessment as an observation.
+
+      // 4. Add meaningful OBSERVATIONS based on the note.
+      // Example: Save the primary assessment as a 'Diagnosis' observation.
       if (assessment) {
           await addObservation(selectedPatient.id, {
-             code: 'ChiefComplaint', // Example code, adjust as needed
+             code: 'Diagnosis', // More specific code
              value: assessment,
              date: currentDate,
-             // units: undefined // No units for complaint
+             // units: undefined // No units for diagnosis
            });
+           console.log(`[handleSaveNote] Successfully added OBSERVATION (Diagnosis) for patient ${selectedPatient.id}.`);
       }
-      // Example: Saving a summary of objective findings (if available)
-      // if (objectiveSummary) {
-      //    await addObservation(selectedPatient.id, {
-      //       code: 'ObjectiveSummary',
-      //       value: objectiveSummary,
-      //       date: currentDate,
-      //    });
-      // }
+      // Example: Saving the subjective complaint (if available)
+      if (subjectiveSummary) {
+         await addObservation(selectedPatient.id, {
+            code: 'ChiefComplaint', // Use a standard code if possible
+            value: subjectiveSummary,
+            date: currentDate,
+         });
+         console.log(`[handleSaveNote] Successfully added OBSERVATION (ChiefComplaint) for patient ${selectedPatient.id}.`);
+      }
+       // Example: Saving a summary of objective findings (if available)
+       // You might extract specific vitals here if the parser was more sophisticated
+      if (objectiveSummary) {
+         await addObservation(selectedPatient.id, {
+            code: 'ObjectiveSummary',
+            value: objectiveSummary,
+            date: currentDate,
+         });
+          console.log(`[handleSaveNote] Successfully added OBSERVATION (ObjectiveSummary) for patient ${selectedPatient.id}.`);
+      }
+       // Example: Saving the primary plan item (if available)
+       if (planSummary) {
+         await addObservation(selectedPatient.id, {
+            code: 'PlanSummary', // Example code
+            value: planSummary,
+            date: currentDate,
+         });
+         console.log(`[handleSaveNote] Successfully added OBSERVATION (PlanSummary) for patient ${selectedPatient.id}.`);
+      }
 
 
       // 5. Show success toast
       // Always show save success toast
-      toast({ title: 'Note Saved', description: 'SOAP note, Encounter, and related Observation saved to EHR.' });
+      toast({ title: 'Note Saved', description: 'SOAP note and related Encounter/Observations saved.' });
 
       // 6. Refetch patient data to show the updated encounters/observations
       // Use the ref to call fetchPatientData, but DO NOT clear generated fields (SOAP/Codes)
