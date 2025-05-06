@@ -24,7 +24,8 @@ interface DeletePatientDialogProps {
   onConfirm: () => Promise<void>; // Make confirm async
 }
 
-const CONFIRMATION_TEXT = "delete";
+// Define the confirmation text constant
+const CONFIRM_TEXT = "delete";
 
 export function DeletePatientDialog({
   isOpen,
@@ -76,13 +77,13 @@ export function DeletePatientDialog({
 
         <div className="space-y-2 py-4">
           <Label htmlFor="delete-confirm" className="text-sm font-medium">
-            To confirm, please type "<strong className="text-destructive">{CONFIRMATION_TEXT}</strong>" below:
+            To confirm, please type "<strong className="text-destructive">{CONFIRM_TEXT}</strong>" below:
           </Label>
           <Input
             id="delete-confirm"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder={CONFIRMATION_TEXT}
+            placeholder={CONFIRM_TEXT}
             className="border-destructive/50 focus:border-destructive focus:ring-destructive/50"
             disabled={isDeleting}
           />
@@ -109,3 +110,4 @@ export function DeletePatientDialog({
     </AlertDialog>
   );
 }
+
