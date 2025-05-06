@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -17,6 +18,7 @@ import {
     addObservation, // Import addObservation
     addEncounter,   // Import addEncounter
     getCurrentDateString, // Import date helper
+    deletePatientAndRelatedData, // Import the delete function
 } from '@/services/ehr_client';
 import type { Patient, Observation, Encounter } from '@/services/ehr_client';
 import { generateSoapNote } from '@/ai/flows/generate-soap-note';
@@ -584,6 +586,32 @@ export default function Home() {
       }
   };
 
+  // Handler for deleting a patient
+   const handlePatientDeleted = async (patientId: string) => {
+      console.log(`[handlePatientDeleted] Attempting to delete patient: ${patientId}`);
+      try {
+         await deletePatientAndRelatedData(patientId); // Call the service function
+
+         // After successful deletion:
+         // 1. Reload the patient list to remove the deleted patient
+         // 2. If the deleted patient was the selected one, select the first patient in the updated list (or reset if empty)
+         if (loadPatientsListRef.current) {
+            await loadPatientsListRef.current(true); // Reload and select first
+         } else {
+            console.error("loadPatientsList function reference not available after delete.");
+            // Manually reset if list loading fails
+            setPatients(prev => prev.filter(p => p.id !== patientId));
+            if (selectedPatient?.id === patientId) {
+               resetAppState(); // Reset if selected was deleted and list can't reload
+            }
+         }
+      } catch (error) {
+         // Error is already logged in the service, re-throw to be caught by AppLayout for Toast
+         console.error(`[handlePatientDeleted] Error deleting patient ${patientId} from Home component:`, error);
+         throw error; // Re-throw to allow AppLayout to show toast
+      }
+   };
+
 
    // Handle the "Select Patient" button click from the landing page
    const handleEnterApp = () => {
@@ -657,6 +685,7 @@ export default function Home() {
       onAddPatient={() => setIsAddPatientDialogOpen(true)}
       initialSidebarOpen={isSidebarInitiallyOpen} // Pass the initial state
       onReturnToLanding={handleReturnToLanding} // Pass the return function
+      onPatientDeleted={handlePatientDeleted} // Pass the delete handler
     >
         {/* Main content area using grid for desktop layout */}
         {/* Apply a subtle background pattern or gradient for depth */}

@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react'; // Import useState
 import {
   SidebarProvider,
   Sidebar,
@@ -16,14 +16,22 @@ import {
   SidebarGroupLabel,
   SidebarRail,
   SidebarGroupContent,
-  useSidebar, // Import useSidebar here
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Users, Settings, UserPlus, PanelLeft, Home } from 'lucide-react'; // Added Home icon
+import { Users, Settings, UserPlus, PanelLeft, Home, MoreVertical, Trash2, Edit } from 'lucide-react'; // Added icons
 import type { Patient } from '@/services/ehr_client';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"; // Import DropdownMenu components
+import { DeletePatientDialog } from '@/components/delete-patient-dialog'; // Import the new dialog
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface AppLayoutProps {
   patients: Patient[];
@@ -31,6 +39,8 @@ interface AppLayoutProps {
   onSelectPatient: (patientId: string) => void;
   onAddPatient: () => void;
   onReturnToLanding: () => void;
+  // Add a callback for after patient deletion
+  onPatientDeleted: (deletedPatientId: string) => void;
   children: React.ReactNode;
   initialSidebarOpen?: boolean;
 }
@@ -41,6 +51,7 @@ export function AppLayout({
   onSelectPatient,
   onAddPatient,
   onReturnToLanding,
+  onPatientDeleted, // Receive the callback
   children,
   initialSidebarOpen = true,
 }: AppLayoutProps) {
@@ -53,6 +64,7 @@ export function AppLayout({
         onSelectPatient={onSelectPatient}
         onAddPatient={onAddPatient}
         onReturnToLanding={onReturnToLanding}
+        onPatientDeleted={onPatientDeleted} // Pass callback down
       >
         {children}
       </AppLayoutContent>
@@ -67,15 +79,46 @@ function AppLayoutContent({
   onSelectPatient,
   onAddPatient,
   onReturnToLanding,
+  onPatientDeleted, // Receive callback
   children,
 }: Omit<AppLayoutProps, 'initialSidebarOpen'>) {
   const { isMobile, setOpenMobile } = useSidebar(); // Get sidebar context
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
+  const { toast } = useToast();
 
   const handlePatientSelectAndClose = (patientId: string) => {
     onSelectPatient(patientId);
     if (isMobile) {
       setOpenMobile(false); // Close mobile sidebar on selection
     }
+  };
+
+  const handleDeleteClick = (patient: Patient) => {
+     setPatientToDelete(patient);
+     setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+      if (!patientToDelete) return;
+
+      try {
+         // Call the parent's delete handler (defined in page.tsx)
+         await onPatientDeleted(patientToDelete.id);
+         toast({
+             title: "Patient Deleted",
+             description: `${patientToDelete.name} and all related data have been permanently deleted.`,
+         });
+         setPatientToDelete(null);
+         setIsDeleteDialogOpen(false);
+      } catch (error) {
+          console.error('Error deleting patient:', error);
+          toast({
+             title: "Deletion Failed",
+             description: `Could not delete ${patientToDelete?.name}. Please try again.`,
+             variant: "destructive",
+          });
+      }
   };
 
   return (
@@ -101,16 +144,55 @@ function AppLayoutContent({
                     <p className="px-2 text-sm text-muted-foreground italic">No patients added yet.</p>
                   )}
                   {patients.map((patient) => (
-                    <SidebarMenuItem key={patient.id}>
-                      <SidebarMenuButton
-                        className="justify-start font-normal" // Use normal font weight by default
-                        isActive={selectedPatient?.id === patient.id}
-                        onClick={() => handlePatientSelectAndClose(patient.id)} // Use the new handler
-                        tooltip={patient.name}
-                      >
-                        <Users />
-                        <span>{patient.name}</span>
-                      </SidebarMenuButton>
+                    <SidebarMenuItem key={patient.id} className="group/menu-item"> {/* Add group identifier */}
+                       <div className="flex items-center w-full"> {/* Flex container for button and dots */}
+                          <SidebarMenuButton
+                            className="flex-grow justify-start font-normal pr-8" // Add padding for the dots button
+                            isActive={selectedPatient?.id === patient.id}
+                            onClick={() => handlePatientSelectAndClose(patient.id)}
+                            tooltip={patient.name}
+                          >
+                             <Users />
+                             <span className="truncate">{patient.name}</span>
+                          </SidebarMenuButton>
+
+                          {/* Dropdown Menu Trigger */}
+                           <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 text-muted-foreground opacity-0 group-hover/menu-item:opacity-100 focus:opacity-100 group-data-[state=open]:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden"
+                                    onClick={(e) => e.stopPropagation()} // Prevent triggering patient selection
+                                  >
+                                     <MoreVertical className="h-4 w-4" />
+                                     <span className="sr-only">Patient Options</span>
+                                  </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                side="right"
+                                align="start"
+                                className="w-40"
+                                onClick={(e) => e.stopPropagation()} // Prevent closing sidebar on mobile
+                               >
+                                 {/* <DropdownMenuItem disabled>
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    <span>Rename</span>
+                                 </DropdownMenuItem>
+                                 <DropdownMenuItem disabled>
+                                     <Users className="mr-2 h-4 w-4" />
+                                     <span>Update Info</span>
+                                 </DropdownMenuItem> */}
+                                 <DropdownMenuItem
+                                    className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                    onClick={() => handleDeleteClick(patient)}
+                                 >
+                                     <Trash2 className="mr-2 h-4 w-4" />
+                                     <span>Delete Patient</span>
+                                 </DropdownMenuItem>
+                              </DropdownMenuContent>
+                           </DropdownMenu>
+                       </div>
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>
@@ -135,16 +217,20 @@ function AppLayoutContent({
       </Sidebar>
 
       {/* Main Content Area wrapper */}
-      <div className="flex flex-col flex-1 min-h-svh overflow-hidden"> {/* Keep overflow hidden here */}
-         {/* Header for Mobile View with Trigger */}
+       <div className="flex flex-col flex-1 min-h-svh overflow-hidden">
          <MobileHeader onReturnToLanding={onReturnToLanding} />
-
-         {/* SidebarInset provides styling context and handles padding */}
-         {/* Changed overflow-auto to overflow-hidden */}
          <SidebarInset className="flex-1 flex flex-col overflow-hidden">
              {children}
          </SidebarInset>
-      </div>
+       </div>
+
+       {/* Delete Confirmation Dialog */}
+        <DeletePatientDialog
+            isOpen={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            patientName={patientToDelete?.name ?? ''}
+            onConfirm={handleConfirmDelete}
+        />
     </>
   );
 }

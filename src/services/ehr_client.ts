@@ -1,3 +1,4 @@
+
 import { db } from '@/lib/firebase'; // Import Firestore instance
 import {
     collection,
@@ -12,6 +13,8 @@ import {
     limit,
     Timestamp, // Use Firestore Timestamp for dates if possible
     serverTimestamp, // For setting creation time automatically
+    writeBatch, // Import writeBatch for atomic deletes
+    deleteDoc, // Import deleteDoc
 } from 'firebase/firestore';
 
 /**
@@ -341,6 +344,63 @@ export async function addEncounter(
         throw new Error(`Failed to add encounter for patient ${patientId} to Firestore.`);
     }
 }
+
+/**
+ * Asynchronously deletes a patient and all their related data (observations, encounters, notes)
+ * from Firestore using a batch write for atomicity.
+ *
+ * @param patientId The ID of the patient to delete.
+ * @returns A promise that resolves when the deletion is complete.
+ * @throws An error if any part of the deletion process fails.
+ */
+export async function deletePatientAndRelatedData(patientId: string): Promise<void> {
+    console.log(`[EHR Client] Starting deletion process for patient ID: ${patientId}`);
+    const batch = writeBatch(db);
+
+    try {
+        // 1. Delete the patient document itself
+        const patientDocRef = doc(db, 'patients', patientId);
+        batch.delete(patientDocRef);
+        console.log(`[EHR Client] Queued patient doc deletion: ${patientId}`);
+
+        // 2. Query and queue deletion for related observations
+        const obsQuery = query(observationsCollection, where('patientId', '==', patientId));
+        const obsSnapshot = await getDocs(obsQuery);
+        obsSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+            console.log(`[EHR Client] Queued observation deletion: ${doc.id}`);
+        });
+        console.log(`[EHR Client] Queued ${obsSnapshot.size} observations for deletion.`);
+
+        // 3. Query and queue deletion for related encounters
+        const encQuery = query(encountersCollection, where('patientId', '==', patientId));
+        const encSnapshot = await getDocs(encQuery);
+        encSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+             console.log(`[EHR Client] Queued encounter deletion: ${doc.id}`);
+        });
+        console.log(`[EHR Client] Queued ${encSnapshot.size} encounters for deletion.`);
+
+
+        // 4. Query and queue deletion for related notes
+        const notesQuery = query(notesCollection, where('patientId', '==', patientId));
+        const notesSnapshot = await getDocs(notesQuery);
+        notesSnapshot.forEach(doc => {
+             batch.delete(doc.ref);
+             console.log(`[EHR Client] Queued note deletion: ${doc.id}`);
+        });
+         console.log(`[EHR Client] Queued ${notesSnapshot.size} notes for deletion.`);
+
+        // 5. Commit the batch write
+        await batch.commit();
+        console.log(`[EHR Client] Successfully deleted patient ${patientId} and all related data.`);
+
+    } catch (error) {
+        console.error(`Error deleting patient ${patientId} and related data:`, error);
+        throw new Error(`Failed to delete patient ${patientId}.`);
+    }
+}
+
 
 // Helper function to get current date in YYYY-MM-DD format
 export function getCurrentDateString(): string {
