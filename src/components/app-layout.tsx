@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import Link from 'next/link'; // Import Link
 import {
   SidebarProvider,
   Sidebar,
@@ -37,7 +36,8 @@ import { useToast } from '@/hooks/use-toast';
 import { UpdatePatientForm } from '@/components/update-patient-form';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
+import { SettingsDialog } from '@/components/settings-dialog'; // Import SettingsDialog
 
 interface AppLayoutProps {
   patients: Patient[];
@@ -123,11 +123,12 @@ function AppLayoutContent({
   const { isMobile, setOpenMobile } = useSidebar();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false); // State for settings dialog
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [patientToUpdate, setPatientToUpdate] = useState<Patient | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
-  const router = useRouter(); // Use router for navigation
+  const router = useRouter();
 
   const handlePatientSelectAndClose = (patientId: string) => {
     onSelectPatient(patientId);
@@ -344,22 +345,15 @@ function AppLayoutContent({
                 <Home /> <span className="group-data-[collapsible=icon]:hidden">Return Home</span>
              </Button>
           <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
-             {/* Link to Settings Page */}
-             <Link href="/dashboard/settings" passHref legacyBehavior>
-                <Button
-                   asChild={false} // Use Button directly, not Slot
-                   variant="ghost"
-                   className="flex-1 justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-none"
-                   aria-label='Settings'
-                   onClick={(e) => {
-                     // Prevent default if needed, then navigate or let Link handle it
-                     // Optionally close mobile sidebar on navigate
-                     if (isMobile) setOpenMobile(false);
-                   }}
-                >
-                   <Settings /> <span className="group-data-[collapsible=icon]:hidden">Settings</span>
-                </Button>
-            </Link>
+             {/* Settings Button now opens the dialog */}
+             <Button
+               variant="ghost"
+               className="flex-1 justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-none"
+               aria-label='Settings'
+               onClick={() => setIsSettingsDialogOpen(true)} // Open the dialog
+             >
+               <Settings /> <span className="group-data-[collapsible=icon]:hidden">Settings</span>
+             </Button>
             <ThemeToggle />
           </div>
         </SidebarFooter>
@@ -387,6 +381,11 @@ function AppLayoutContent({
             onPatientUpdated={handleConfirmUpdate}
           />
         )}
+        {/* Render the Settings Dialog */}
+        <SettingsDialog
+          isOpen={isSettingsDialogOpen}
+          onOpenChange={setIsSettingsDialogOpen}
+        />
     </>
   );
 }
@@ -420,4 +419,3 @@ function MobileHeader({ onReturnToLanding }: { onReturnToLanding: () => void }) 
      </header>
   );
 }
-
