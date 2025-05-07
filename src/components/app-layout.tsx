@@ -1,7 +1,8 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react'; // Import useState, useMemo, useEffect
+import React, { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link'; // Import Link
 import {
   SidebarProvider,
   Sidebar,
@@ -20,7 +21,7 @@ import {
 } from '@/components/ui/sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Users, Settings, UserPlus, PanelLeft, Home, MoreVertical, Trash2, Edit, Search, X } from 'lucide-react'; // Added Search, X
+import { Users, Settings, UserPlus, PanelLeft, Home, MoreVertical, Trash2, Edit, Search, X } from 'lucide-react';
 import type { Patient } from '@/services/ehr_client';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { cn } from '@/lib/utils';
@@ -34,8 +35,9 @@ import {
 import { DeletePatientDialog } from '@/components/delete-patient-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { UpdatePatientForm } from '@/components/update-patient-form';
-import { Input } from '@/components/ui/input'; // Import Input
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'; // Import Tooltip components for search clear
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 interface AppLayoutProps {
   patients: Patient[];
@@ -62,7 +64,7 @@ export function AppLayout({
 }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={initialSidebarOpen}>
-       <TooltipProvider> {/* Ensure TooltipProvider wraps the layout */}
+       <TooltipProvider>
         <AppLayoutContent
           patients={patients}
           selectedPatient={selectedPatient}
@@ -91,10 +93,9 @@ const HighlightedText = ({ text, highlight, isSelected }: { text: string; highli
         part.toLowerCase() === highlight.toLowerCase() ? (
           <strong
             key={index}
-             // Apply different styling based on selection
              className={cn(
                 "font-bold",
-                isSelected ? "text-primary-foreground/80" : "text-primary" // Use foreground color variant for selected, primary for others
+                isSelected ? "text-sidebar-primary-foreground/80" : "text-sidebar-primary"
              )}
           >
             {part}
@@ -124,8 +125,9 @@ function AppLayoutContent({
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [patientToUpdate, setPatientToUpdate] = useState<Patient | null>(null);
-  const [searchQuery, setSearchQuery] = useState(''); // State for search query
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
+  const router = useRouter(); // Use router for navigation
 
   const handlePatientSelectAndClose = (patientId: string) => {
     onSelectPatient(patientId);
@@ -186,7 +188,6 @@ function AppLayoutContent({
      }
   };
 
-   // Filter patients based on search query
    const filteredPatients = useMemo(() => {
      if (!searchQuery) {
        return patients;
@@ -196,12 +197,10 @@ function AppLayoutContent({
      );
    }, [patients, searchQuery]);
 
-   // Clear search query
    const clearSearch = () => {
        setSearchQuery('');
    };
 
-   // Close mobile sidebar if search query is cleared
    useEffect(() => {
        if (isMobile && !searchQuery) {
            // Optional: Close mobile sidebar when search is cleared?
@@ -209,26 +208,39 @@ function AppLayoutContent({
        }
    }, [searchQuery, isMobile, setOpenMobile]);
 
+   const handleReturnHome = () => {
+      router.push('/'); // Navigate to landing page
+   };
+
+   // Combine landing page return logic if needed
+   const handleCombinedReturn = () => {
+     if (onReturnToLanding) {
+       onReturnToLanding(); // Call existing prop if provided
+     } else {
+       handleReturnHome(); // Default to router push
+     }
+   }
+
 
   return (
     <>
       <Sidebar>
         <SidebarRail />
         <SidebarHeader className="p-4 flex justify-between items-center">
-          <button onClick={onReturnToLanding} className="flex items-center gap-2 group outline-none focus:ring-2 focus:ring-ring rounded-md p-1 -m-1">
-             <span className="text-xl font-semibold text-primary">MedScribeAI</span>
+           {/* Make logo clickable to return home */}
+          <button onClick={handleCombinedReturn} className="flex items-center gap-2 group outline-none focus:ring-2 focus:ring-ring rounded-md p-1 -m-1">
+             <svg className="h-6 w-6 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+             <span className="text-xl font-semibold text-primary group-data-[collapsible=icon]:hidden">MedScribeAI</span>
           </button>
+          {/* Removed SidebarTrigger from here as it's in MobileHeader */}
         </SidebarHeader>
         <ScrollArea className="flex-1">
           <SidebarContent className="p-0">
             <SidebarGroup className="p-0">
                <SidebarGroupLabel className="px-4 flex justify-between items-center text-xs font-semibold uppercase text-muted-foreground tracking-wider pt-2 pb-1">
-                 <span>Patients</span>
-                 {/* Search Icon - Consider removing if input is always visible */}
-                 {/* <Search className="h-4 w-4 text-muted-foreground" /> */}
+                 <span className="group-data-[collapsible=icon]:hidden">Patients</span>
                </SidebarGroupLabel>
 
-                {/* Search Input - Positioned below the label */}
                 <div className="px-4 py-2 relative group-data-[collapsible=icon]:hidden">
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
@@ -236,7 +248,7 @@ function AppLayoutContent({
                        placeholder="Search patients..."
                        value={searchQuery}
                        onChange={(e) => setSearchQuery(e.target.value)}
-                       className="pl-8 h-8 text-sm bg-sidebar-accent/50 border-sidebar-border focus:ring-primary/50" // Adjusted style
+                       className="pl-8 h-8 text-sm bg-sidebar-accent/50 border-sidebar-border focus:ring-primary/50"
                     />
                     {searchQuery && (
                          <Tooltip>
@@ -261,12 +273,12 @@ function AppLayoutContent({
               <SidebarGroupContent className="px-2 py-1">
                 <SidebarMenu>
                   {filteredPatients.length === 0 && (
-                    <p className="px-2 text-sm text-muted-foreground italic">
-                        {searchQuery ? 'No patients match your search.' : 'No patients added yet.'}
+                    <p className="px-2 text-sm text-muted-foreground italic group-data-[collapsible=icon]:hidden">
+                        {searchQuery ? 'No matches.' : 'No patients.'}
                     </p>
                   )}
                   {filteredPatients.map((patient) => {
-                    const isSelected = selectedPatient?.id === patient.id; // Check if current item is selected
+                    const isSelected = selectedPatient?.id === patient.id;
                     return (
                         <SidebarMenuItem key={patient.id} className="group/menu-item">
                            <div className="flex items-center w-full">
@@ -277,8 +289,7 @@ function AppLayoutContent({
                                 tooltip={patient.name}
                               >
                                  <Users />
-                                 {/* Use HighlightedText component, pass isSelected */}
-                                 <span className="truncate">
+                                 <span className="truncate group-data-[collapsible=icon]:hidden">
                                      <HighlightedText text={patient.name} highlight={searchQuery} isSelected={isSelected} />
                                  </span>
                               </SidebarMenuButton>
@@ -328,24 +339,39 @@ function AppLayoutContent({
            <Button variant="outline" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2" onClick={onAddPatient} aria-label='Add Patient'>
              <UserPlus /> <span className="group-data-[collapsible=icon]:hidden">Add Patient</span>
            </Button>
-             <Button variant="outline" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2" onClick={onReturnToLanding} aria-label='Return Home'>
+             {/* Use Button for consistent styling, but handle navigation with router */}
+             <Button variant="outline" className="w-full justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2" onClick={handleCombinedReturn} aria-label='Return Home'>
                 <Home /> <span className="group-data-[collapsible=icon]:hidden">Return Home</span>
              </Button>
           <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
-            <Button variant="ghost" className="flex-1 justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-none" aria-label='Settings'>
-              <Settings /> <span className="group-data-[collapsible=icon]:hidden">Settings</span>
-            </Button>
+             {/* Link to Settings Page */}
+             <Link href="/settings" passHref legacyBehavior>
+                <Button
+                   asChild={false} // Use Button directly, not Slot
+                   variant="ghost"
+                   className="flex-1 justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-none"
+                   aria-label='Settings'
+                   onClick={(e) => {
+                     // Prevent default if needed, then navigate or let Link handle it
+                     // Optionally close mobile sidebar on navigate
+                     if (isMobile) setOpenMobile(false);
+                   }}
+                >
+                   <Settings /> <span className="group-data-[collapsible=icon]:hidden">Settings</span>
+                </Button>
+            </Link>
             <ThemeToggle />
           </div>
         </SidebarFooter>
       </Sidebar>
 
-       <div className="flex flex-col flex-1 min-h-svh overflow-hidden">
-         <MobileHeader onReturnToLanding={onReturnToLanding} />
-         <SidebarInset className="flex-1 flex flex-col overflow-hidden">
-             {children}
-         </SidebarInset>
-       </div>
+       {/* Main content area should be wrapped by Dashboard Layout */}
+       <SidebarInset>
+         <MobileHeader onReturnToLanding={handleCombinedReturn} />
+          {/* Children (page content) will be rendered here */}
+          {children}
+       </SidebarInset>
+
 
         <DeletePatientDialog
             isOpen={isDeleteDialogOpen}
@@ -367,18 +393,14 @@ function AppLayoutContent({
 
 
 function MobileHeader({ onReturnToLanding }: { onReturnToLanding: () => void }) {
-  const { isMobile, toggleSidebar } = useSidebar();
-
-  if (!isMobile) {
-    return null;
-  }
+  const { toggleSidebar } = useSidebar(); // Removed isMobile check as this component only renders on mobile
 
   return (
      <header className={cn(
          "sticky top-0 z-40",
          "flex h-14 items-center justify-between shrink-0",
          "border-b bg-background px-4",
-         "md:hidden"
+         "md:hidden" // Hide on medium and larger screens
         )}>
         <Button
           variant="ghost"
@@ -393,10 +415,8 @@ function MobileHeader({ onReturnToLanding }: { onReturnToLanding: () => void }) 
              <svg className="h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
             <span className="text-lg font-semibold text-primary">MedScribeAI</span>
          </button>
+         {/* Placeholder for balance */}
          <div className="w-8 flex-shrink-0"></div>
      </header>
   );
 }
-
-
-    

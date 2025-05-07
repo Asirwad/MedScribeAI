@@ -1,24 +1,22 @@
 
 import type { Metadata } from 'next';
-import { Open_Sans, Poppins } from 'next/font/google'; // Import Poppins
+import { Open_Sans, Poppins } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { ThemeProvider } from '@/components/theme-provider';
-import { cn } from '@/lib/utils'; // Import cn
+import { ThemeProvider } from '@/components/theme-provider'; // Use the standard ThemeProvider
+import { cn } from '@/lib/utils';
 
-// Configure Open Sans for body text
+// Font configurations remain the same
 const openSans = Open_Sans({
   variable: '--font-open-sans',
   subsets: ['latin'],
 });
 
-// Configure Poppins for headings/logo (adjust weights as needed)
 const poppins = Poppins({
   variable: '--font-poppins',
   subsets: ['latin'],
-  weight: ['400', '600', '700'], // Include weights for regular, semibold, bold
+  weight: ['400', '600', '700'],
 });
-
 
 export const metadata: Metadata = {
   title: 'MedScribeAI',
@@ -31,20 +29,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Apply both font variables to the html tag
     <html lang="en" className={cn(openSans.variable, poppins.variable)} suppressHydrationWarning>
-      {/* Removed extra space causing hydration error */}
-      <body
-        className="antialiased font-sans" // Use the default sans font which now includes Open Sans
-      >
+      <body className="antialiased font-sans">
+        {/* Use the standard ThemeProvider from next-themes for light/dark mode */}
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
+          {children} {/* Render the active page (landing or dashboard) */}
+          <Toaster /> {/* Keep toaster accessible globally */}
         </ThemeProvider>
       </body>
     </html>

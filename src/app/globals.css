@@ -1,105 +1,271 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Base variables for light/dark mode - applied to :root and .dark */
 @layer base {
   :root {
-    /* Light Theme - Slightly lighter background, stronger primary */
+    /* Default Light Theme (Blue accents) */
     --background: 0 0% 98%; /* Lighter Gray */
     --foreground: 210 10% 10%; /* Darker Gray */
-
-    --card: 0 0% 100%; /* White */
+    --card: 0 0% 100%;
     --card-foreground: 210 10% 10%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 210 10% 10%;
-
-    --primary: 207 100% 45%; /* Slightly brighter UST Blue */
-    --primary-foreground: 0 0% 100%; /* White */
-
-    --secondary: 210 40% 97%; /* Slightly lighter gray/blue */
-    --secondary-foreground: 210 10% 20%; /* Slightly darker gray/blue */
-
-    --muted: 210 40% 95%; /* Light Gray/Blueish */
-    --muted-foreground: 210 10% 40%; /* Medium Gray/Blueish */
-
-    --accent: 207 90% 58%; /* Slightly brighter accent */
-    --accent-foreground: 0 0% 100%; /* White */
-
-    --destructive: 0 84.2% 60.2%; /* Default Red */
-    --destructive-foreground: 0 0% 98%; /* Light Gray */
-
-    --border: 210 20% 90%; /* Slightly lighter border */
+    --primary: 207 100% 45%; /* UST Blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 97%;
+    --secondary-foreground: 210 10% 20%;
+    --muted: 210 40% 95%;
+    --muted-foreground: 210 10% 40%;
+    --accent: 207 90% 58%; /* Lighter UST Blue */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 210 20% 90%;
     --input: 210 20% 90%;
     --ring: 207 100% 45%; /* UST Blue */
-
     --radius: 0.5rem;
+    --chart-1: 207 100% 45%;
+    --chart-2: 207 90% 58%;
+    --chart-3: 210 10% 40%;
+    --chart-4: 210 20% 75%;
+    --chart-5: 210 40% 85%;
+    --sidebar-background: 0 0% 96%;
+    --sidebar-foreground: 210 10% 10%;
+    --sidebar-primary: 207 100% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 90%;
+    --sidebar-accent-foreground: 210 10% 10%;
+    --sidebar-border: 210 20% 85%;
+    --sidebar-ring: 207 100% 45%;
 
-    /* Chart colors adjusted slightly */
-    --chart-1: 207 100% 45%; /* Primary */
-    --chart-2: 207 90% 58%; /* Accent */
-    --chart-3: 210 10% 40%; /* Muted Foreground */
-    --chart-4: 210 20% 75%; /* Medium Gray */
-    --chart-5: 210 40% 85%; /* Lighter Blue/Gray */
+    /* --- Theme Specific Variables (Defaults to Blue) --- */
+    --blue-background: 0 0% 98%;
+    --blue-foreground: 210 10% 10%;
+    --blue-primary: 207 100% 45%;
+    --blue-primary-foreground: 0 0% 100%;
+    --blue-accent: 207 90% 58%;
+    --blue-accent-foreground: 0 0% 100%;
+    --blue-ring: 207 100% 45%;
 
-    /* Sidebar variables adjusted to match */
-    --sidebar-background: 0 0% 96%; /* Slightly darker than main BG */
-    --sidebar-foreground: 210 10% 10%; /* Dark Gray */
-    --sidebar-primary: 207 100% 45%; /* Primary */
-    --sidebar-primary-foreground: 0 0% 100%; /* White */
-    --sidebar-accent: 210 40% 90%; /* Slightly darker light gray for accent */
-    --sidebar-accent-foreground: 210 10% 10%; /* Dark Gray */
-    --sidebar-border: 210 20% 85%; /* Darker Border */
-    --sidebar-ring: 207 100% 45%; /* Ring */
+    --pink-background: 340 100% 98%;
+    --pink-foreground: 340 10% 10%;
+    --pink-primary: 340 90% 60%;
+    --pink-primary-foreground: 0 0% 100%;
+    --pink-accent: 340 80% 70%;
+    --pink-accent-foreground: 340 10% 10%;
+    --pink-ring: 340 90% 60%;
+
+    --green-background: 140 100% 98%;
+    --green-foreground: 140 15% 10%;
+    --green-primary: 140 70% 40%;
+    --green-primary-foreground: 0 0% 100%;
+    --green-accent: 140 60% 55%;
+    --green-accent-foreground: 140 15% 10%;
+    --green-ring: 140 70% 40%;
+
+    --dracula-background: 231 15% 18%;
+    --dracula-foreground: 60 30% 96%;
+    --dracula-primary: 265 89% 78%; /* Purple */
+    --dracula-primary-foreground: 231 15% 18%;
+    --dracula-accent: 189 100% 78%; /* Cyan */
+    --dracula-accent-foreground: 231 15% 18%;
+    --dracula-ring: 265 89% 78%;
+
+    --high-contrast-background: 0 0% 0%;
+    --high-contrast-foreground: 0 0% 100%;
+    --high-contrast-primary: 0 0% 100%;
+    --high-contrast-primary-foreground: 0 0% 0%;
+    --high-contrast-accent: 60 100% 50%; /* Bright Yellow */
+    --high-contrast-accent-foreground: 0 0% 0%;
+    --high-contrast-ring: 0 0% 100%;
   }
 
   .dark {
-     /* Dark Theme - Slightly darker background, softer primary */
-    --background: 210 10% 12%; /* Darker Blue/Gray */
-    --foreground: 0 0% 95%; /* Near White */
-
-    --card: 210 10% 18%; /* Slightly Lighter Dark Card */
+    /* Default Dark Theme (Blue accents) */
+    --background: 210 10% 12%;
+    --foreground: 0 0% 95%;
+    --card: 210 10% 18%;
     --card-foreground: 0 0% 95%;
-
-    --popover: 210 10% 15%; /* Dark Popover */
+    --popover: 210 10% 15%;
     --popover-foreground: 0 0% 95%;
-
-    --primary: 207 90% 60%; /* Softer Lighter UST Blue */
-    --primary-foreground: 210 10% 10%; /* Very Dark */
-
-    --secondary: 210 10% 22%; /* Darker Blue/Gray Secondary */
-    --secondary-foreground: 0 0% 90%; /* Lighter Foreground */
-
-    --muted: 210 10% 25%; /* Dark Blue/Gray */
-    --muted-foreground: 210 10% 60%; /* Medium Gray/Blueish */
-
-    --accent: 207 80% 68%; /* Slightly softer accent */
-    --accent-foreground: 210 10% 10%; /* Very Dark */
-
-    --destructive: 0 72% 55%; /* Slightly brighter dark red */
+    --primary: 207 90% 60%; /* Lighter UST Blue */
+    --primary-foreground: 210 10% 10%;
+    --secondary: 210 10% 22%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 210 10% 25%;
+    --muted-foreground: 210 10% 60%;
+    --accent: 207 80% 68%; /* Softer Lighter UST Blue */
+    --accent-foreground: 210 10% 10%;
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 95%;
-
-    --border: 210 10% 35%; /* Slightly Lighter Darker Border */
+    --border: 210 10% 35%;
     --input: 210 10% 35%;
     --ring: 207 90% 60%; /* Lighter blue */
+    --chart-1: 207 90% 60%;
+    --chart-2: 207 80% 68%;
+    --chart-3: 210 10% 60%;
+    --chart-4: 210 10% 55%;
+    --chart-5: 210 20% 45%;
+    --sidebar-background: 210 10% 8%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 207 90% 60%;
+    --sidebar-primary-foreground: 210 10% 10%;
+    --sidebar-accent: 210 10% 20%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 210 10% 28%;
+    --sidebar-ring: 207 90% 60%;
 
-    /* Dark Chart colors */
-    --chart-1: 207 90% 60%; /* Primary Dark */
-    --chart-2: 207 80% 68%; /* Accent Dark */
-    --chart-3: 210 10% 60%; /* Muted Foreground Dark */
-    --chart-4: 210 10% 55%; /* Medium Gray Dark */
-    --chart-5: 210 20% 45%; /* Darker Blue/Gray */
+    /* --- Theme Specific Variables (Defaults to Blue) --- */
+    --blue-background: 210 10% 12%;
+    --blue-foreground: 0 0% 95%;
+    --blue-primary: 207 90% 60%;
+    --blue-primary-foreground: 210 10% 10%;
+    --blue-accent: 207 80% 68%;
+    --blue-accent-foreground: 210 10% 10%;
+    --blue-ring: 207 90% 60%;
 
-    /* Dark Sidebar variables */
-    --sidebar-background: 210 10% 8%; /* Even Darker Gray */
-    --sidebar-foreground: 0 0% 95%; /* Near White */
-    --sidebar-primary: 207 90% 60%; /* Primary Dark */
-    --sidebar-primary-foreground: 210 10% 10%; /* Very Dark */
-    --sidebar-accent: 210 10% 20%; /* Dark Blue/Gray Accent */
-    --sidebar-accent-foreground: 0 0% 95%; /* Near White */
-    --sidebar-border: 210 10% 28%; /* Darker Border */
-    --sidebar-ring: 207 90% 60%; /* Ring Dark */
+    --pink-background: 340 10% 12%;
+    --pink-foreground: 0 0% 95%;
+    --pink-primary: 340 80% 70%;
+    --pink-primary-foreground: 340 10% 10%;
+    --pink-accent: 340 70% 80%;
+    --pink-accent-foreground: 340 10% 10%;
+    --pink-ring: 340 80% 70%;
+
+    --green-background: 140 10% 12%;
+    --green-foreground: 0 0% 95%;
+    --green-primary: 140 60% 55%;
+    --green-primary-foreground: 140 10% 10%;
+    --green-accent: 140 50% 65%;
+    --green-accent-foreground: 140 10% 10%;
+    --green-ring: 140 60% 55%;
+
+    /* Dracula already defined in light */
+    --dracula-background: 231 15% 18%;
+    --dracula-foreground: 60 30% 96%;
+    --dracula-primary: 265 89% 78%; /* Purple */
+    --dracula-primary-foreground: 231 15% 18%;
+    --dracula-accent: 189 100% 78%; /* Cyan */
+    --dracula-accent-foreground: 231 15% 18%;
+    --dracula-ring: 265 89% 78%;
+
+    /* High Contrast already defined in light */
+    --high-contrast-background: 0 0% 0%;
+    --high-contrast-foreground: 0 0% 100%;
+    --high-contrast-primary: 0 0% 100%;
+    --high-contrast-primary-foreground: 0 0% 0%;
+    --high-contrast-accent: 60 100% 50%; /* Bright Yellow */
+    --high-contrast-accent-foreground: 0 0% 0%;
+    --high-contrast-ring: 0 0% 100%;
   }
+
+  /* Apply theme-specific variables when the theme class is present */
+  .theme-blue {
+     /* Already default */
+  }
+  .theme-pink {
+      --background: hsl(var(--pink-background));
+      --foreground: hsl(var(--pink-foreground));
+      --primary: hsl(var(--pink-primary));
+      --primary-foreground: hsl(var(--pink-primary-foreground));
+      --accent: hsl(var(--pink-accent));
+      --accent-foreground: hsl(var(--pink-accent-foreground));
+      --ring: hsl(var(--pink-ring));
+      /* Add other variables like card, popover, secondary if needed, or let them inherit */
+      --card: hsl(var(--pink-background) / 0.9);
+      --popover: hsl(var(--pink-background) / 0.85);
+      --secondary: hsl(var(--pink-primary) / 0.1);
+      --muted: hsl(var(--pink-primary) / 0.05);
+      --border: hsl(var(--pink-primary) / 0.2);
+      --input: hsl(var(--pink-primary) / 0.2);
+      --chart-1: hsl(var(--pink-primary));
+      --chart-2: hsl(var(--pink-accent));
+  }
+  .theme-green {
+      --background: hsl(var(--green-background));
+      --foreground: hsl(var(--green-foreground));
+      --primary: hsl(var(--green-primary));
+      --primary-foreground: hsl(var(--green-primary-foreground));
+      --accent: hsl(var(--green-accent));
+      --accent-foreground: hsl(var(--green-accent-foreground));
+      --ring: hsl(var(--green-ring));
+      --card: hsl(var(--green-background) / 0.9);
+      --popover: hsl(var(--green-background) / 0.85);
+      --secondary: hsl(var(--green-primary) / 0.1);
+      --muted: hsl(var(--green-primary) / 0.05);
+      --border: hsl(var(--green-primary) / 0.2);
+      --input: hsl(var(--green-primary) / 0.2);
+      --chart-1: hsl(var(--green-primary));
+      --chart-2: hsl(var(--green-accent));
+  }
+   .theme-dracula {
+      --background: hsl(var(--dracula-background));
+      --foreground: hsl(var(--dracula-foreground));
+      --primary: hsl(var(--dracula-primary));
+      --primary-foreground: hsl(var(--dracula-primary-foreground));
+      --accent: hsl(var(--dracula-accent));
+      --accent-foreground: hsl(var(--dracula-accent-foreground));
+      --ring: hsl(var(--dracula-ring));
+      --card: hsl(231 15% 24%); /* Slightly lighter card */
+      --popover: hsl(231 15% 22%);
+      --secondary: hsl(231 15% 30%);
+      --muted: hsl(231 15% 35%);
+      --border: hsl(231 15% 40%);
+      --input: hsl(231 15% 40%);
+      --chart-1: hsl(var(--dracula-primary));
+      --chart-2: hsl(var(--dracula-accent));
+      --chart-3: hsl(31, 97%, 76%); /* Orange */
+      --chart-4: hsl(135, 94%, 75%); /* Green */
+      --chart-5: hsl(328, 100%, 82%); /* Pink */
+       /* Adjust sidebar specifically for dracula if needed */
+      --sidebar-background: hsl(231 15% 15%);
+      --sidebar-foreground: hsl(var(--dracula-foreground));
+      --sidebar-primary: hsl(var(--dracula-primary));
+      --sidebar-primary-foreground: hsl(var(--dracula-primary-foreground));
+      --sidebar-accent: hsl(231 15% 25%);
+      --sidebar-accent-foreground: hsl(var(--dracula-accent));
+      --sidebar-border: hsl(231 15% 30%);
+      --sidebar-ring: hsl(var(--dracula-ring));
+  }
+   .theme-high-contrast {
+      --background: hsl(var(--high-contrast-background));
+      --foreground: hsl(var(--high-contrast-foreground));
+      --primary: hsl(var(--high-contrast-primary));
+      --primary-foreground: hsl(var(--high-contrast-primary-foreground));
+      --accent: hsl(var(--high-contrast-accent));
+      --accent-foreground: hsl(var(--high-contrast-accent-foreground));
+      --ring: hsl(var(--high-contrast-ring));
+      --card: hsl(0 0% 10%);
+      --card-foreground: hsl(0 0% 100%);
+      --popover: hsl(0 0% 5%);
+      --popover-foreground: hsl(0 0% 100%);
+      --secondary: hsl(0 0% 20%);
+      --secondary-foreground: hsl(0 0% 100%);
+      --muted: hsl(0 0% 15%);
+      --muted-foreground: hsl(0 0% 70%);
+      --destructive: hsl(0, 100%, 50%); /* Bright Red */
+      --destructive-foreground: hsl(0 0% 0%);
+      --border: hsl(0 0% 40%);
+      --input: hsl(0 0% 40%);
+      --chart-1: hsl(var(--high-contrast-primary));
+      --chart-2: hsl(var(--high-contrast-accent));
+      --chart-3: hsl(210, 100%, 60%); /* Bright Blue */
+      --chart-4: hsl(120, 100%, 50%); /* Bright Green */
+      --chart-5: hsl(0, 100%, 60%); /* Bright Red */
+       /* Adjust sidebar specifically for high contrast if needed */
+      --sidebar-background: hsl(0 0% 5%);
+      --sidebar-foreground: hsl(var(--high-contrast-foreground));
+      --sidebar-primary: hsl(var(--high-contrast-primary));
+      --sidebar-primary-foreground: hsl(var(--high-contrast-primary-foreground));
+      --sidebar-accent: hsl(0 0% 15%);
+      --sidebar-accent-foreground: hsl(var(--high-contrast-accent));
+      --sidebar-border: hsl(0 0% 25%);
+      --sidebar-ring: hsl(var(--high-contrast-ring));
+   }
+
 }
 
 @layer base {
