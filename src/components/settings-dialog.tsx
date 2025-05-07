@@ -129,11 +129,11 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
                     </div>
                     {/* Theme preview swatches */}
                     <div className="flex gap-1 mt-1">
-                         {/* Preview Background */}
+                         {/* Determine if the system is in dark mode to apply the correct preview */}
                         <span
                             className="h-4 w-4 rounded-full border border-border/50"
                             style={{
-                                backgroundColor: `hsl(var(--${themeOption.value}-${resolvedTheme === 'dark' ? 'dark-' : ''}background, var(--background)))`,
+                                backgroundColor: `hsl(var(--${themeOption.value}-background))`,
                             }}
                              aria-label={`${themeOption.label} Background`}
                         ></span>
@@ -141,7 +141,7 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
                         <span
                             className="h-4 w-4 rounded-full border border-border/50"
                              style={{
-                                backgroundColor: `hsl(var(--${themeOption.value}-${resolvedTheme === 'dark' ? 'dark-' : ''}primary, var(--primary)))`,
+                                backgroundColor: `hsl(var(--${themeOption.value}-primary))`,
                             }}
                              aria-label={`${themeOption.label} Primary`}
                         ></span>
@@ -149,7 +149,7 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
                         <span
                             className="h-4 w-4 rounded-full border border-border/50"
                             style={{
-                                backgroundColor: `hsl(var(--${themeOption.value}-${resolvedTheme === 'dark' ? 'dark-' : ''}accent, var(--accent)))`,
+                                backgroundColor: `hsl(var(--${themeOption.value}-accent))`,
                              }}
                             aria-label={`${themeOption.label} Accent`}
                         ></span>
