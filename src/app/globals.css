@@ -163,6 +163,7 @@
   }
 
   /* Apply theme-specific variables when the theme class is present */
+  /* These classes are applied by the DashboardThemeProvider */
   .theme-blue {
      /* Already default */
   }
@@ -297,3 +298,19 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* Removed invalid dynamic classes for previews, they are handled inline */
+/*
+.bg-\[--preview-primary-\$\{themeOption\.value\}\] {
+  background-color: var(--preview-primary-${themeOption.value});
+}
+.bg-\[--preview-accent-\$\{themeOption\.value\}\] {
+  background-color: var(--preview-accent-${themeOption.value});
+}
+.bg-\[--preview-bg-\$\{themeOption\.value\}\] {
+  background-color: var(--preview-bg-${themeOption.value});
+}
+*/
+
+
+    
