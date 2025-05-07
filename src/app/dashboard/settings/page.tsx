@@ -129,38 +129,21 @@ export default function SettingsPage() {
                                    <themeOption.icon className="h-5 w-5" />
                                    <span className="font-semibold">{themeOption.label}</span>
                                </div>
-                               {/* Optional: Add a small visual preview */}
+                               {/* Use inline styles with CSS variables for preview */}
                                <div className="flex gap-1 mt-1">
-                                   <span className={`h-4 w-4 rounded-full bg-[--preview-bg-${themeOption.value}] border border-border`}></span>
-                                   <span className={`h-4 w-4 rounded-full bg-[--preview-primary-${themeOption.value}] border border-border`}></span>
-                                   <span className={`h-4 w-4 rounded-full bg-[--preview-accent-${themeOption.value}] border border-border`}></span>
+                                   <span
+                                     className="h-4 w-4 rounded-full border border-border"
+                                     style={{ backgroundColor: `hsl(var(--${themeOption.value}-background, var(--background)))` }}
+                                    ></span>
+                                   <span
+                                       className="h-4 w-4 rounded-full border border-border"
+                                       style={{ backgroundColor: `hsl(var(--${themeOption.value}-primary, var(--primary)))` }}
+                                   ></span>
+                                   <span
+                                       className="h-4 w-4 rounded-full border border-border"
+                                       style={{ backgroundColor: `hsl(var(--${themeOption.value}-accent, var(--accent)))` }}
+                                   ></span>
                                </div>
-
-                               {/* CSS variables for preview (could be defined inline or in globals.css) */}
-                               <style jsx>{`
-                                 .theme-${themeOption.value} {
-                                     --preview-bg-${themeOption.value}: hsl(var(--${themeOption.value}-background, var(--background)));
-                                     --preview-primary-${themeOption.value}: hsl(var(--${themeOption.value}-primary, var(--primary)));
-                                     --preview-accent-${themeOption.value}: hsl(var(--${themeOption.value}-accent, var(--accent)));
-                                 }
-                                 body { /* Define fallbacks in body scope */
-                                     --preview-bg-blue: hsl(var(--blue-background, 207 100% 98%));
-                                     --preview-primary-blue: hsl(var(--blue-primary, 207 100% 45%));
-                                     --preview-accent-blue: hsl(var(--blue-accent, 207 90% 58%));
-                                     --preview-bg-pink: hsl(var(--pink-background, 340 100% 98%));
-                                     --preview-primary-pink: hsl(var(--pink-primary, 340 90% 60%));
-                                     --preview-accent-pink: hsl(var(--pink-accent, 340 80% 70%));
-                                     --preview-bg-green: hsl(var(--green-background, 140 100% 98%));
-                                     --preview-primary-green: hsl(var(--green-primary, 140 70% 40%));
-                                     --preview-accent-green: hsl(var(--green-accent, 140 60% 55%));
-                                     --preview-bg-dracula: hsl(var(--dracula-background, 231 15% 18%)); /* Assuming dark */
-                                     --preview-primary-dracula: hsl(var(--dracula-primary, 265 89% 78%));
-                                     --preview-accent-dracula: hsl(var(--dracula-accent, 189 100% 78%));
-                                     --preview-bg-high-contrast: hsl(var(--high-contrast-background, 0 0% 0%)); /* Assuming dark */
-                                     --preview-primary-high-contrast: hsl(var(--high-contrast-primary, 0 0% 100%));
-                                     --preview-accent-high-contrast: hsl(var(--high-contrast-accent, 60 100% 50%));
-                                 }
-                               `}</style>
 
                              </Label>
                            ))}
