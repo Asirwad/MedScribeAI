@@ -47,7 +47,8 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      {/* Increased max-width to sm:max-w-2xl */}
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -126,19 +127,32 @@ export function SettingsDialog({ isOpen, onOpenChange }: SettingsDialogProps) {
                       <themeOption.icon className="h-5 w-5" />
                       <span className="font-semibold">{themeOption.label}</span>
                     </div>
+                    {/* Theme preview swatches */}
                     <div className="flex gap-1 mt-1">
-                      <span
-                        className="h-4 w-4 rounded-full border border-border"
-                        style={{ backgroundColor: `hsl(var(--${themeOption.value}-background, var(--background)))` }}
-                      ></span>
-                      <span
-                        className="h-4 w-4 rounded-full border border-border"
-                        style={{ backgroundColor: `hsl(var(--${themeOption.value}-primary, var(--primary)))` }}
-                      ></span>
-                      <span
-                        className="h-4 w-4 rounded-full border border-border"
-                        style={{ backgroundColor: `hsl(var(--${themeOption.value}-accent, var(--accent)))` }}
-                      ></span>
+                         {/* Preview Background */}
+                        <span
+                            className="h-4 w-4 rounded-full border border-border/50"
+                            style={{
+                                backgroundColor: `hsl(var(--${themeOption.value}-${resolvedTheme === 'dark' ? 'dark-' : ''}background, var(--background)))`,
+                            }}
+                             aria-label={`${themeOption.label} Background`}
+                        ></span>
+                         {/* Preview Primary */}
+                        <span
+                            className="h-4 w-4 rounded-full border border-border/50"
+                             style={{
+                                backgroundColor: `hsl(var(--${themeOption.value}-${resolvedTheme === 'dark' ? 'dark-' : ''}primary, var(--primary)))`,
+                            }}
+                             aria-label={`${themeOption.label} Primary`}
+                        ></span>
+                        {/* Preview Accent */}
+                        <span
+                            className="h-4 w-4 rounded-full border border-border/50"
+                            style={{
+                                backgroundColor: `hsl(var(--${themeOption.value}-${resolvedTheme === 'dark' ? 'dark-' : ''}accent, var(--accent)))`,
+                             }}
+                            aria-label={`${themeOption.label} Accent`}
+                        ></span>
                     </div>
                   </Label>
                 ))}
