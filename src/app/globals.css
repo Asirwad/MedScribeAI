@@ -183,6 +183,14 @@
       --input: hsl(var(--pink-primary) / 0.2);
       --chart-1: hsl(var(--pink-primary));
       --chart-2: hsl(var(--pink-accent));
+      --sidebar-background: hsl(var(--pink-background) / 0.8);
+      --sidebar-foreground: hsl(var(--pink-foreground));
+      --sidebar-primary: hsl(var(--pink-primary));
+      --sidebar-primary-foreground: hsl(var(--pink-primary-foreground));
+      --sidebar-accent: hsl(var(--pink-primary) / 0.15);
+      --sidebar-accent-foreground: hsl(var(--pink-accent-foreground));
+      --sidebar-border: hsl(var(--pink-primary) / 0.25);
+      --sidebar-ring: hsl(var(--pink-ring));
   }
   .theme-green {
       --background: hsl(var(--green-background));
@@ -200,6 +208,14 @@
       --input: hsl(var(--green-primary) / 0.2);
       --chart-1: hsl(var(--green-primary));
       --chart-2: hsl(var(--green-accent));
+      --sidebar-background: hsl(var(--green-background) / 0.8);
+      --sidebar-foreground: hsl(var(--green-foreground));
+      --sidebar-primary: hsl(var(--green-primary));
+      --sidebar-primary-foreground: hsl(var(--green-primary-foreground));
+      --sidebar-accent: hsl(var(--green-primary) / 0.15);
+      --sidebar-accent-foreground: hsl(var(--green-accent-foreground));
+      --sidebar-border: hsl(var(--green-primary) / 0.25);
+      --sidebar-ring: hsl(var(--green-ring));
   }
    .theme-dracula {
       --background: hsl(var(--dracula-background));
@@ -220,7 +236,7 @@
       --chart-3: hsl(31, 97%, 76%); /* Orange */
       --chart-4: hsl(135, 94%, 75%); /* Green */
       --chart-5: hsl(328, 100%, 82%); /* Pink */
-       /* Adjust sidebar specifically for dracula if needed */
+       /* Adjust sidebar specifically for dracula */
       --sidebar-background: hsl(231 15% 15%);
       --sidebar-foreground: hsl(var(--dracula-foreground));
       --sidebar-primary: hsl(var(--dracula-primary));
@@ -255,7 +271,7 @@
       --chart-3: hsl(210, 100%, 60%); /* Bright Blue */
       --chart-4: hsl(120, 100%, 50%); /* Bright Green */
       --chart-5: hsl(0, 100%, 60%); /* Bright Red */
-       /* Adjust sidebar specifically for high contrast if needed */
+       /* Adjust sidebar specifically for high contrast */
       --sidebar-background: hsl(0 0% 5%);
       --sidebar-foreground: hsl(var(--high-contrast-foreground));
       --sidebar-primary: hsl(var(--high-contrast-primary));
