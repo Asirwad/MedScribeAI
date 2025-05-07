@@ -1,4 +1,6 @@
 
+'use client'; // Add this directive
+
 import React from 'react';
 import { DashboardThemeProvider, useDashboardTheme } from '@/context/dashboard-theme-provider'; // Import ThemeProvider
 import { cn } from '@/lib/utils';
@@ -26,5 +28,3 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     </DashboardThemeProvider>
   );
 }
-
-    
