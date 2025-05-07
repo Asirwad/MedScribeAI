@@ -40,7 +40,7 @@
     --sidebar-border: 210 20% 85%;
     --sidebar-ring: 207 100% 45%;
 
-    /* --- Theme Specific Variables (Defaults to Blue) --- */
+    /* --- Raw Theme HSL Values (No --theme- prefix needed here) --- */
     --blue-background: 0 0% 98%;
     --blue-foreground: 210 10% 10%;
     --blue-primary: 207 100% 45%;
@@ -117,7 +117,8 @@
     --sidebar-border: 210 10% 28%;
     --sidebar-ring: 207 90% 60%;
 
-    /* --- Theme Specific Variables (Defaults to Blue) --- */
+    /* --- Raw Dark Theme HSL Values --- */
+    /* Note: These are defined here but applied via .theme-* classes below */
     --blue-background: 210 10% 12%;
     --blue-foreground: 0 0% 95%;
     --blue-primary: 207 90% 60%;
@@ -142,31 +143,18 @@
     --green-accent-foreground: 140 10% 10%;
     --green-ring: 140 60% 55%;
 
-    /* Dracula already defined in light */
-    --dracula-background: 231 15% 18%;
-    --dracula-foreground: 60 30% 96%;
-    --dracula-primary: 265 89% 78%; /* Purple */
-    --dracula-primary-foreground: 231 15% 18%;
-    --dracula-accent: 189 100% 78%; /* Cyan */
-    --dracula-accent-foreground: 231 15% 18%;
-    --dracula-ring: 265 89% 78%;
-
-    /* High Contrast already defined in light */
-    --high-contrast-background: 0 0% 0%;
-    --high-contrast-foreground: 0 0% 100%;
-    --high-contrast-primary: 0 0% 100%;
-    --high-contrast-primary-foreground: 0 0% 0%;
-    --high-contrast-accent: 60 100% 50%; /* Bright Yellow */
-    --high-contrast-accent-foreground: 0 0% 0%;
-    --high-contrast-ring: 0 0% 100%;
+    /* Dracula variables remain the same for light/dark */
+    /* High Contrast variables remain the same for light/dark */
   }
 
-  /* Apply theme-specific variables when the theme class is present */
-  /* These classes are applied by the DashboardThemeProvider */
-  .theme-blue {
-     /* Already default */
+  /* Apply theme-specific variables when the theme class is present on the BODY */
+  /* These classes are applied by the DashboardThemeProvider via DashboardLayoutContent */
+
+  /* Light Mode Theme Overrides */
+  body.theme-blue {
+     /* Blue is default light theme, no overrides needed in light mode */
   }
-  .theme-pink {
+  body.theme-pink {
       --background: hsl(var(--pink-background));
       --foreground: hsl(var(--pink-foreground));
       --primary: hsl(var(--pink-primary));
@@ -175,24 +163,28 @@
       --accent-foreground: hsl(var(--pink-accent-foreground));
       --ring: hsl(var(--pink-ring));
       /* Add other variables like card, popover, secondary if needed, or let them inherit */
-      --card: hsl(var(--pink-background) / 0.9);
-      --popover: hsl(var(--pink-background) / 0.85);
-      --secondary: hsl(var(--pink-primary) / 0.1);
-      --muted: hsl(var(--pink-primary) / 0.05);
-      --border: hsl(var(--pink-primary) / 0.2);
-      --input: hsl(var(--pink-primary) / 0.2);
+      --card: hsl(var(--pink-background) / 0.9); /* Example override */
+      --card-foreground: hsl(var(--pink-foreground));
+      --popover: hsl(var(--pink-background) / 0.85); /* Example override */
+      --popover-foreground: hsl(var(--pink-foreground));
+      --secondary: hsl(var(--pink-primary) / 0.1); /* Example override */
+      --secondary-foreground: hsl(var(--pink-foreground));
+      --muted: hsl(var(--pink-primary) / 0.05); /* Example override */
+      --muted-foreground: hsl(var(--pink-foreground) / 0.7);
+      --border: hsl(var(--pink-primary) / 0.2); /* Example override */
+      --input: hsl(var(--pink-primary) / 0.2); /* Example override */
       --chart-1: hsl(var(--pink-primary));
       --chart-2: hsl(var(--pink-accent));
-      --sidebar-background: hsl(var(--pink-background) / 0.8);
+      --sidebar-background: hsl(var(--pink-background) / 0.8); /* Example override */
       --sidebar-foreground: hsl(var(--pink-foreground));
       --sidebar-primary: hsl(var(--pink-primary));
       --sidebar-primary-foreground: hsl(var(--pink-primary-foreground));
-      --sidebar-accent: hsl(var(--pink-primary) / 0.15);
+      --sidebar-accent: hsl(var(--pink-primary) / 0.15); /* Example override */
       --sidebar-accent-foreground: hsl(var(--pink-accent-foreground));
-      --sidebar-border: hsl(var(--pink-primary) / 0.25);
+      --sidebar-border: hsl(var(--pink-primary) / 0.25); /* Example override */
       --sidebar-ring: hsl(var(--pink-ring));
   }
-  .theme-green {
+  body.theme-green {
       --background: hsl(var(--green-background));
       --foreground: hsl(var(--green-foreground));
       --primary: hsl(var(--green-primary));
@@ -201,9 +193,13 @@
       --accent-foreground: hsl(var(--green-accent-foreground));
       --ring: hsl(var(--green-ring));
       --card: hsl(var(--green-background) / 0.9);
+      --card-foreground: hsl(var(--green-foreground));
       --popover: hsl(var(--green-background) / 0.85);
+      --popover-foreground: hsl(var(--green-foreground));
       --secondary: hsl(var(--green-primary) / 0.1);
+      --secondary-foreground: hsl(var(--green-foreground));
       --muted: hsl(var(--green-primary) / 0.05);
+      --muted-foreground: hsl(var(--green-foreground) / 0.7);
       --border: hsl(var(--green-primary) / 0.2);
       --input: hsl(var(--green-primary) / 0.2);
       --chart-1: hsl(var(--green-primary));
@@ -217,7 +213,10 @@
       --sidebar-border: hsl(var(--green-primary) / 0.25);
       --sidebar-ring: hsl(var(--green-ring));
   }
-   .theme-dracula {
+  /* Dracula applies to both light/dark as its base is dark */
+  body.theme-dracula,
+  body.theme-dracula.dark /* Ensure specificity for dark mode */
+  {
       --background: hsl(var(--dracula-background));
       --foreground: hsl(var(--dracula-foreground));
       --primary: hsl(var(--dracula-primary));
@@ -226,11 +225,17 @@
       --accent-foreground: hsl(var(--dracula-accent-foreground));
       --ring: hsl(var(--dracula-ring));
       --card: hsl(231 15% 24%); /* Slightly lighter card */
+      --card-foreground: hsl(var(--dracula-foreground));
       --popover: hsl(231 15% 22%);
+      --popover-foreground: hsl(var(--dracula-foreground));
       --secondary: hsl(231 15% 30%);
+      --secondary-foreground: hsl(var(--dracula-foreground));
       --muted: hsl(231 15% 35%);
+      --muted-foreground: hsl(var(--dracula-foreground) / 0.7);
       --border: hsl(231 15% 40%);
       --input: hsl(231 15% 40%);
+      --destructive: hsl(0 100% 70%); /* Bright Red */
+      --destructive-foreground: hsl(0 0% 100%);
       --chart-1: hsl(var(--dracula-primary));
       --chart-2: hsl(var(--dracula-accent));
       --chart-3: hsl(31, 97%, 76%); /* Orange */
@@ -246,7 +251,10 @@
       --sidebar-border: hsl(231 15% 30%);
       --sidebar-ring: hsl(var(--dracula-ring));
   }
-   .theme-high-contrast {
+   /* High Contrast applies to both light/dark as its base is stark */
+  body.theme-high-contrast,
+  body.theme-high-contrast.dark /* Ensure specificity for dark mode */
+  {
       --background: hsl(var(--high-contrast-background));
       --foreground: hsl(var(--high-contrast-foreground));
       --primary: hsl(var(--high-contrast-primary));
@@ -281,6 +289,71 @@
       --sidebar-border: hsl(0 0% 25%);
       --sidebar-ring: hsl(var(--high-contrast-ring));
    }
+
+  /* Dark Mode Theme Overrides */
+  body.theme-blue.dark {
+      /* Blue is default dark theme, no overrides needed in dark mode */
+  }
+  body.theme-pink.dark {
+      --background: hsl(var(--pink-background));
+      --foreground: hsl(var(--pink-foreground));
+      --primary: hsl(var(--pink-primary));
+      --primary-foreground: hsl(var(--pink-primary-foreground));
+      --accent: hsl(var(--pink-accent));
+      --accent-foreground: hsl(var(--pink-accent-foreground));
+      --ring: hsl(var(--pink-ring));
+      /* Add other variables like card, popover, secondary if needed, or let them inherit */
+      --card: hsl(var(--pink-background) / 0.9);
+      --card-foreground: hsl(var(--pink-foreground));
+      --popover: hsl(var(--pink-background) / 0.85);
+      --popover-foreground: hsl(var(--pink-foreground));
+      --secondary: hsl(var(--pink-primary) / 0.1);
+      --secondary-foreground: hsl(var(--pink-foreground));
+      --muted: hsl(var(--pink-primary) / 0.05);
+      --muted-foreground: hsl(var(--pink-foreground) / 0.7);
+      --border: hsl(var(--pink-primary) / 0.2);
+      --input: hsl(var(--pink-primary) / 0.2);
+      --chart-1: hsl(var(--pink-primary));
+      --chart-2: hsl(var(--pink-accent));
+      --sidebar-background: hsl(var(--pink-background) / 0.8);
+      --sidebar-foreground: hsl(var(--pink-foreground));
+      --sidebar-primary: hsl(var(--pink-primary));
+      --sidebar-primary-foreground: hsl(var(--pink-primary-foreground));
+      --sidebar-accent: hsl(var(--pink-primary) / 0.15);
+      --sidebar-accent-foreground: hsl(var(--pink-accent-foreground));
+      --sidebar-border: hsl(var(--pink-primary) / 0.25);
+      --sidebar-ring: hsl(var(--pink-ring));
+  }
+  body.theme-green.dark {
+      --background: hsl(var(--green-background));
+      --foreground: hsl(var(--green-foreground));
+      --primary: hsl(var(--green-primary));
+      --primary-foreground: hsl(var(--green-primary-foreground));
+      --accent: hsl(var(--green-accent));
+      --accent-foreground: hsl(var(--green-accent-foreground));
+      --ring: hsl(var(--green-ring));
+      --card: hsl(var(--green-background) / 0.9);
+      --card-foreground: hsl(var(--green-foreground));
+      --popover: hsl(var(--green-background) / 0.85);
+      --popover-foreground: hsl(var(--green-foreground));
+      --secondary: hsl(var(--green-primary) / 0.1);
+      --secondary-foreground: hsl(var(--green-foreground));
+      --muted: hsl(var(--green-primary) / 0.05);
+      --muted-foreground: hsl(var(--green-foreground) / 0.7);
+      --border: hsl(var(--green-primary) / 0.2);
+      --input: hsl(var(--green-primary) / 0.2);
+      --chart-1: hsl(var(--green-primary));
+      --chart-2: hsl(var(--green-accent));
+      --sidebar-background: hsl(var(--green-background) / 0.8);
+      --sidebar-foreground: hsl(var(--green-foreground));
+      --sidebar-primary: hsl(var(--green-primary));
+      --sidebar-primary-foreground: hsl(var(--green-primary-foreground));
+      --sidebar-accent: hsl(var(--green-primary) / 0.15);
+      --sidebar-accent-foreground: hsl(var(--green-accent-foreground));
+      --sidebar-border: hsl(var(--green-primary) / 0.25);
+      --sidebar-ring: hsl(var(--green-ring));
+  }
+
 
 }
 
