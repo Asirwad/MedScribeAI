@@ -40,46 +40,129 @@
     --sidebar-border: 210 20% 85%;
     --sidebar-ring: 207 100% 45%;
 
-    /* --- Raw Theme HSL Values (No --theme- prefix needed here) --- */
+    /* --- Raw Light Theme HSL Values --- */
     --blue-background: 0 0% 98%;
     --blue-foreground: 210 10% 10%;
     --blue-primary: 207 100% 45%;
     --blue-primary-foreground: 0 0% 100%;
+    --blue-secondary: 210 40% 97%;
+    --blue-secondary-foreground: 210 10% 20%;
+    --blue-muted: 210 40% 95%;
+    --blue-muted-foreground: 210 10% 40%;
     --blue-accent: 207 90% 58%;
     --blue-accent-foreground: 0 0% 100%;
+    --blue-border: 210 20% 90%;
     --blue-ring: 207 100% 45%;
+    --blue-sidebar-background: 0 0% 96%;
+    --blue-sidebar-foreground: 210 10% 10%;
+    --blue-sidebar-primary: 207 100% 45%;
+    --blue-sidebar-primary-foreground: 0 0% 100%;
+    --blue-sidebar-accent: 210 40% 90%;
+    --blue-sidebar-accent-foreground: 210 10% 10%;
+    --blue-sidebar-border: 210 20% 85%;
+    --blue-sidebar-ring: 207 100% 45%;
 
     --pink-background: 340 100% 98%;
     --pink-foreground: 340 10% 10%;
     --pink-primary: 340 90% 60%;
     --pink-primary-foreground: 0 0% 100%;
+    --pink-secondary: 340 80% 97%;
+    --pink-secondary-foreground: 340 10% 20%;
+    --pink-muted: 340 80% 95%;
+    --pink-muted-foreground: 340 10% 40%;
     --pink-accent: 340 80% 70%;
     --pink-accent-foreground: 340 10% 10%;
+    --pink-border: 340 50% 90%;
     --pink-ring: 340 90% 60%;
+    --pink-sidebar-background: 340 100% 96%;
+    --pink-sidebar-foreground: 340 10% 10%;
+    --pink-sidebar-primary: 340 90% 60%;
+    --pink-sidebar-primary-foreground: 0 0% 100%;
+    --pink-sidebar-accent: 340 80% 90%;
+    --pink-sidebar-accent-foreground: 340 10% 10%;
+    --pink-sidebar-border: 340 50% 85%;
+    --pink-sidebar-ring: 340 90% 60%;
+
 
     --green-background: 140 100% 98%;
     --green-foreground: 140 15% 10%;
     --green-primary: 140 70% 40%;
     --green-primary-foreground: 0 0% 100%;
+    --green-secondary: 140 80% 97%;
+    --green-secondary-foreground: 140 15% 20%;
+    --green-muted: 140 80% 95%;
+    --green-muted-foreground: 140 15% 40%;
     --green-accent: 140 60% 55%;
     --green-accent-foreground: 140 15% 10%;
+    --green-border: 140 50% 90%;
     --green-ring: 140 70% 40%;
+    --green-sidebar-background: 140 100% 96%;
+    --green-sidebar-foreground: 140 15% 10%;
+    --green-sidebar-primary: 140 70% 40%;
+    --green-sidebar-primary-foreground: 0 0% 100%;
+    --green-sidebar-accent: 140 80% 90%;
+    --green-sidebar-accent-foreground: 140 15% 10%;
+    --green-sidebar-border: 140 50% 85%;
+    --green-sidebar-ring: 140 70% 40%;
+
 
     --dracula-background: 231 15% 18%;
     --dracula-foreground: 60 30% 96%;
+    --dracula-card: 231 15% 24%;
+    --dracula-card-foreground: 60 30% 96%;
+    --dracula-popover: 231 15% 22%;
+    --dracula-popover-foreground: 60 30% 96%;
     --dracula-primary: 265 89% 78%; /* Purple */
     --dracula-primary-foreground: 231 15% 18%;
+    --dracula-secondary: 231 15% 30%;
+    --dracula-secondary-foreground: 60 30% 96%;
+    --dracula-muted: 231 15% 35%;
+    --dracula-muted-foreground: 60 30% 70%;
     --dracula-accent: 189 100% 78%; /* Cyan */
     --dracula-accent-foreground: 231 15% 18%;
+    --dracula-destructive: 0 100% 70%; /* Bright Red */
+    --dracula-destructive-foreground: 0 0% 100%;
+    --dracula-border: 231 15% 40%;
+    --dracula-input: 231 15% 40%;
     --dracula-ring: 265 89% 78%;
+    --dracula-sidebar-background: 231 15% 15%;
+    --dracula-sidebar-foreground: 60 30% 96%;
+    --dracula-sidebar-primary: 265 89% 78%;
+    --dracula-sidebar-primary-foreground: 231 15% 18%;
+    --dracula-sidebar-accent: 231 15% 25%;
+    --dracula-sidebar-accent-foreground: 189 100% 78%; /* Cyan accent */
+    --dracula-sidebar-border: 231 15% 30%;
+    --dracula-sidebar-ring: 265 89% 78%;
+
 
     --high-contrast-background: 0 0% 0%;
     --high-contrast-foreground: 0 0% 100%;
+    --high-contrast-card: 0 0% 10%;
+    --high-contrast-card-foreground: 0 0% 100%;
+    --high-contrast-popover: 0 0% 5%;
+    --high-contrast-popover-foreground: 0 0% 100%;
     --high-contrast-primary: 0 0% 100%;
     --high-contrast-primary-foreground: 0 0% 0%;
+    --high-contrast-secondary: 0 0% 20%;
+    --high-contrast-secondary-foreground: 0 0% 100%;
+    --high-contrast-muted: 0 0% 15%;
+    --high-contrast-muted-foreground: 0 0% 70%;
     --high-contrast-accent: 60 100% 50%; /* Bright Yellow */
     --high-contrast-accent-foreground: 0 0% 0%;
+    --high-contrast-destructive: 0, 100%, 50%; /* Bright Red */
+    --high-contrast-destructive-foreground: 0 0% 0%;
+    --high-contrast-border: 0 0% 40%;
+    --high-contrast-input: 0 0% 40%;
     --high-contrast-ring: 0 0% 100%;
+    --high-contrast-sidebar-background: 0 0% 5%;
+    --high-contrast-sidebar-foreground: 0 0% 100%;
+    --high-contrast-sidebar-primary: 0 0% 100%;
+    --high-contrast-sidebar-primary-foreground: 0 0% 0%;
+    --high-contrast-sidebar-accent: 0 0% 15%;
+    --high-contrast-sidebar-accent-foreground: 60 100% 50%; /* Yellow accent */
+    --high-contrast-sidebar-border: 0 0% 25%;
+    --high-contrast-sidebar-ring: 0 0% 100%;
+
   }
 
   .dark {
@@ -118,30 +201,69 @@
     --sidebar-ring: 207 90% 60%;
 
     /* --- Raw Dark Theme HSL Values --- */
-    /* Note: These are defined here but applied via .theme-* classes below */
     --blue-background: 210 10% 12%;
     --blue-foreground: 0 0% 95%;
     --blue-primary: 207 90% 60%;
     --blue-primary-foreground: 210 10% 10%;
+    --blue-secondary: 210 10% 22%;
+    --blue-secondary-foreground: 0 0% 90%;
+    --blue-muted: 210 10% 25%;
+    --blue-muted-foreground: 210 10% 60%;
     --blue-accent: 207 80% 68%;
     --blue-accent-foreground: 210 10% 10%;
+    --blue-border: 210 10% 35%;
     --blue-ring: 207 90% 60%;
+    --blue-sidebar-background: 210 10% 8%;
+    --blue-sidebar-foreground: 0 0% 95%;
+    --blue-sidebar-primary: 207 90% 60%;
+    --blue-sidebar-primary-foreground: 210 10% 10%;
+    --blue-sidebar-accent: 210 10% 20%;
+    --blue-sidebar-accent-foreground: 0 0% 95%;
+    --blue-sidebar-border: 210 10% 28%;
+    --blue-sidebar-ring: 207 90% 60%;
 
     --pink-background: 340 10% 12%;
     --pink-foreground: 0 0% 95%;
     --pink-primary: 340 80% 70%;
     --pink-primary-foreground: 340 10% 10%;
+    --pink-secondary: 340 10% 22%;
+    --pink-secondary-foreground: 0 0% 90%;
+    --pink-muted: 340 10% 25%;
+    --pink-muted-foreground: 340 10% 60%;
     --pink-accent: 340 70% 80%;
     --pink-accent-foreground: 340 10% 10%;
+    --pink-border: 340 10% 35%;
     --pink-ring: 340 80% 70%;
+    --pink-sidebar-background: 340 10% 8%;
+    --pink-sidebar-foreground: 0 0% 95%;
+    --pink-sidebar-primary: 340 80% 70%;
+    --pink-sidebar-primary-foreground: 340 10% 10%;
+    --pink-sidebar-accent: 340 10% 20%;
+    --pink-sidebar-accent-foreground: 0 0% 95%;
+    --pink-sidebar-border: 340 10% 28%;
+    --pink-sidebar-ring: 340 80% 70%;
+
 
     --green-background: 140 10% 12%;
     --green-foreground: 0 0% 95%;
     --green-primary: 140 60% 55%;
     --green-primary-foreground: 140 10% 10%;
+    --green-secondary: 140 10% 22%;
+    --green-secondary-foreground: 0 0% 90%;
+    --green-muted: 140 10% 25%;
+    --green-muted-foreground: 140 10% 60%;
     --green-accent: 140 50% 65%;
     --green-accent-foreground: 140 10% 10%;
+    --green-border: 140 10% 35%;
     --green-ring: 140 60% 55%;
+    --green-sidebar-background: 140 10% 8%;
+    --green-sidebar-foreground: 0 0% 95%;
+    --green-sidebar-primary: 140 60% 55%;
+    --green-sidebar-primary-foreground: 140 10% 10%;
+    --green-sidebar-accent: 140 10% 20%;
+    --green-sidebar-accent-foreground: 0 0% 95%;
+    --green-sidebar-border: 140 10% 28%;
+    --green-sidebar-ring: 140 60% 55%;
 
     /* Dracula variables remain the same for light/dark */
     /* High Contrast variables remain the same for light/dark */
@@ -152,66 +274,95 @@
 
   /* Light Mode Theme Overrides */
   body.theme-blue {
-     /* Blue is default light theme, no overrides needed in light mode */
+    /* Default light theme, only need to apply raw values */
+    --background: hsl(var(--blue-background));
+    --foreground: hsl(var(--blue-foreground));
+    --card: hsl(var(--blue-background));
+    --card-foreground: hsl(var(--blue-foreground));
+    --popover: hsl(var(--blue-background));
+    --popover-foreground: hsl(var(--blue-foreground));
+    --primary: hsl(var(--blue-primary));
+    --primary-foreground: hsl(var(--blue-primary-foreground));
+    --secondary: hsl(var(--blue-secondary));
+    --secondary-foreground: hsl(var(--blue-secondary-foreground));
+    --muted: hsl(var(--blue-muted));
+    --muted-foreground: hsl(var(--blue-muted-foreground));
+    --accent: hsl(var(--blue-accent));
+    --accent-foreground: hsl(var(--blue-accent-foreground));
+    --border: hsl(var(--blue-border));
+    --input: hsl(var(--blue-border));
+    --ring: hsl(var(--blue-ring));
+    --sidebar-background: hsl(var(--blue-sidebar-background));
+    --sidebar-foreground: hsl(var(--blue-sidebar-foreground));
+    --sidebar-primary: hsl(var(--blue-sidebar-primary));
+    --sidebar-primary-foreground: hsl(var(--blue-sidebar-primary-foreground));
+    --sidebar-accent: hsl(var(--blue-sidebar-accent));
+    --sidebar-accent-foreground: hsl(var(--blue-sidebar-accent-foreground));
+    --sidebar-border: hsl(var(--blue-sidebar-border));
+    --sidebar-ring: hsl(var(--blue-sidebar-ring));
+    --chart-1: hsl(var(--blue-primary));
+    --chart-2: hsl(var(--blue-accent));
+    /* ... other blue vars if needed */
   }
   body.theme-pink {
       --background: hsl(var(--pink-background));
       --foreground: hsl(var(--pink-foreground));
+      --card: hsl(var(--pink-background));
+      --card-foreground: hsl(var(--pink-foreground));
+      --popover: hsl(var(--pink-background));
+      --popover-foreground: hsl(var(--pink-foreground));
       --primary: hsl(var(--pink-primary));
       --primary-foreground: hsl(var(--pink-primary-foreground));
+      --secondary: hsl(var(--pink-secondary));
+      --secondary-foreground: hsl(var(--pink-secondary-foreground));
+      --muted: hsl(var(--pink-muted));
+      --muted-foreground: hsl(var(--pink-muted-foreground));
       --accent: hsl(var(--pink-accent));
       --accent-foreground: hsl(var(--pink-accent-foreground));
+      --border: hsl(var(--pink-border));
+      --input: hsl(var(--pink-border));
       --ring: hsl(var(--pink-ring));
-      /* Add other variables like card, popover, secondary if needed, or let them inherit */
-      --card: hsl(var(--pink-background) / 0.9); /* Example override */
-      --card-foreground: hsl(var(--pink-foreground));
-      --popover: hsl(var(--pink-background) / 0.85); /* Example override */
-      --popover-foreground: hsl(var(--pink-foreground));
-      --secondary: hsl(var(--pink-primary) / 0.1); /* Example override */
-      --secondary-foreground: hsl(var(--pink-foreground));
-      --muted: hsl(var(--pink-primary) / 0.05); /* Example override */
-      --muted-foreground: hsl(var(--pink-foreground) / 0.7);
-      --border: hsl(var(--pink-primary) / 0.2); /* Example override */
-      --input: hsl(var(--pink-primary) / 0.2); /* Example override */
+      --sidebar-background: hsl(var(--pink-sidebar-background));
+      --sidebar-foreground: hsl(var(--pink-sidebar-foreground));
+      --sidebar-primary: hsl(var(--pink-sidebar-primary));
+      --sidebar-primary-foreground: hsl(var(--pink-sidebar-primary-foreground));
+      --sidebar-accent: hsl(var(--pink-sidebar-accent));
+      --sidebar-accent-foreground: hsl(var(--pink-sidebar-accent-foreground));
+      --sidebar-border: hsl(var(--pink-sidebar-border));
+      --sidebar-ring: hsl(var(--pink-sidebar-ring));
       --chart-1: hsl(var(--pink-primary));
       --chart-2: hsl(var(--pink-accent));
-      --sidebar-background: hsl(var(--pink-background) / 0.8); /* Example override */
-      --sidebar-foreground: hsl(var(--pink-foreground));
-      --sidebar-primary: hsl(var(--pink-primary));
-      --sidebar-primary-foreground: hsl(var(--pink-primary-foreground));
-      --sidebar-accent: hsl(var(--pink-primary) / 0.15); /* Example override */
-      --sidebar-accent-foreground: hsl(var(--pink-accent-foreground));
-      --sidebar-border: hsl(var(--pink-primary) / 0.25); /* Example override */
-      --sidebar-ring: hsl(var(--pink-ring));
+      /* ... other pink vars */
   }
   body.theme-green {
       --background: hsl(var(--green-background));
       --foreground: hsl(var(--green-foreground));
+      --card: hsl(var(--green-background));
+      --card-foreground: hsl(var(--green-foreground));
+      --popover: hsl(var(--green-background));
+      --popover-foreground: hsl(var(--green-foreground));
       --primary: hsl(var(--green-primary));
       --primary-foreground: hsl(var(--green-primary-foreground));
+      --secondary: hsl(var(--green-secondary));
+      --secondary-foreground: hsl(var(--green-secondary-foreground));
+      --muted: hsl(var(--green-muted));
+      --muted-foreground: hsl(var(--green-muted-foreground));
       --accent: hsl(var(--green-accent));
       --accent-foreground: hsl(var(--green-accent-foreground));
+      --border: hsl(var(--green-border));
+      --input: hsl(var(--green-border));
       --ring: hsl(var(--green-ring));
-      --card: hsl(var(--green-background) / 0.9);
-      --card-foreground: hsl(var(--green-foreground));
-      --popover: hsl(var(--green-background) / 0.85);
-      --popover-foreground: hsl(var(--green-foreground));
-      --secondary: hsl(var(--green-primary) / 0.1);
-      --secondary-foreground: hsl(var(--green-foreground));
-      --muted: hsl(var(--green-primary) / 0.05);
-      --muted-foreground: hsl(var(--green-foreground) / 0.7);
-      --border: hsl(var(--green-primary) / 0.2);
-      --input: hsl(var(--green-primary) / 0.2);
+      --sidebar-background: hsl(var(--green-sidebar-background));
+      --sidebar-foreground: hsl(var(--green-sidebar-foreground));
+      --sidebar-primary: hsl(var(--green-sidebar-primary));
+      --sidebar-primary-foreground: hsl(var(--green-sidebar-primary-foreground));
+      --sidebar-accent: hsl(var(--green-sidebar-accent));
+      --sidebar-accent-foreground: hsl(var(--green-sidebar-accent-foreground));
+      --sidebar-border: hsl(var(--green-sidebar-border));
+      --sidebar-ring: hsl(var(--green-sidebar-ring));
       --chart-1: hsl(var(--green-primary));
       --chart-2: hsl(var(--green-accent));
-      --sidebar-background: hsl(var(--green-background) / 0.8);
-      --sidebar-foreground: hsl(var(--green-foreground));
-      --sidebar-primary: hsl(var(--green-primary));
-      --sidebar-primary-foreground: hsl(var(--green-primary-foreground));
-      --sidebar-accent: hsl(var(--green-primary) / 0.15);
-      --sidebar-accent-foreground: hsl(var(--green-accent-foreground));
-      --sidebar-border: hsl(var(--green-primary) / 0.25);
-      --sidebar-ring: hsl(var(--green-ring));
+      /* ... other green vars */
   }
   /* Dracula applies to both light/dark as its base is dark */
   body.theme-dracula,
@@ -219,37 +370,39 @@
   {
       --background: hsl(var(--dracula-background));
       --foreground: hsl(var(--dracula-foreground));
+      --card: hsl(var(--dracula-card));
+      --card-foreground: hsl(var(--dracula-card-foreground));
+      --popover: hsl(var(--dracula-popover));
+      --popover-foreground: hsl(var(--dracula-popover-foreground));
       --primary: hsl(var(--dracula-primary));
       --primary-foreground: hsl(var(--dracula-primary-foreground));
+      --secondary: hsl(var(--dracula-secondary));
+      --secondary-foreground: hsl(var(--dracula-secondary-foreground));
+      --muted: hsl(var(--dracula-muted));
+      --muted-foreground: hsl(var(--dracula-muted-foreground));
       --accent: hsl(var(--dracula-accent));
       --accent-foreground: hsl(var(--dracula-accent-foreground));
+      --destructive: hsl(var(--dracula-destructive));
+      --destructive-foreground: hsl(var(--dracula-destructive-foreground));
+      --border: hsl(var(--dracula-border));
+      --input: hsl(var(--dracula-input));
       --ring: hsl(var(--dracula-ring));
-      --card: hsl(231 15% 24%); /* Slightly lighter card */
-      --card-foreground: hsl(var(--dracula-foreground));
-      --popover: hsl(231 15% 22%);
-      --popover-foreground: hsl(var(--dracula-foreground));
-      --secondary: hsl(231 15% 30%);
-      --secondary-foreground: hsl(var(--dracula-foreground));
-      --muted: hsl(231 15% 35%);
-      --muted-foreground: hsl(var(--dracula-foreground) / 0.7);
-      --border: hsl(231 15% 40%);
-      --input: hsl(231 15% 40%);
-      --destructive: hsl(0 100% 70%); /* Bright Red */
-      --destructive-foreground: hsl(0 0% 100%);
+      --sidebar-background: hsl(var(--dracula-sidebar-background));
+      --sidebar-foreground: hsl(var(--dracula-sidebar-foreground));
+      --sidebar-primary: hsl(var(--dracula-sidebar-primary));
+      --sidebar-primary-foreground: hsl(var(--dracula-sidebar-primary-foreground));
+      --sidebar-accent: hsl(var(--dracula-sidebar-accent));
+      --sidebar-accent-foreground: hsl(var(--dracula-sidebar-accent-foreground));
+      --sidebar-border: hsl(var(--dracula-sidebar-border));
+      --sidebar-ring: hsl(var(--dracula-sidebar-ring));
       --chart-1: hsl(var(--dracula-primary));
       --chart-2: hsl(var(--dracula-accent));
       --chart-3: hsl(31, 97%, 76%); /* Orange */
       --chart-4: hsl(135, 94%, 75%); /* Green */
       --chart-5: hsl(328, 100%, 82%); /* Pink */
-       /* Adjust sidebar specifically for dracula */
-      --sidebar-background: hsl(231 15% 15%);
-      --sidebar-foreground: hsl(var(--dracula-foreground));
-      --sidebar-primary: hsl(var(--dracula-primary));
-      --sidebar-primary-foreground: hsl(var(--dracula-primary-foreground));
-      --sidebar-accent: hsl(231 15% 25%);
-      --sidebar-accent-foreground: hsl(var(--dracula-accent));
-      --sidebar-border: hsl(231 15% 30%);
-      --sidebar-ring: hsl(var(--dracula-ring));
+       /* Adjust destructive specifically if needed */
+       --destructive: 0 100% 70%; /* Bright Red */
+       --destructive-foreground: 0 0% 100%;
   }
    /* High Contrast applies to both light/dark as its base is stark */
   body.theme-high-contrast,
@@ -257,101 +410,128 @@
   {
       --background: hsl(var(--high-contrast-background));
       --foreground: hsl(var(--high-contrast-foreground));
+      --card: hsl(var(--high-contrast-card));
+      --card-foreground: hsl(var(--high-contrast-card-foreground));
+      --popover: hsl(var(--high-contrast-popover));
+      --popover-foreground: hsl(var(--high-contrast-popover-foreground));
       --primary: hsl(var(--high-contrast-primary));
       --primary-foreground: hsl(var(--high-contrast-primary-foreground));
+      --secondary: hsl(var(--high-contrast-secondary));
+      --secondary-foreground: hsl(var(--high-contrast-secondary-foreground));
+      --muted: hsl(var(--high-contrast-muted));
+      --muted-foreground: hsl(var(--high-contrast-muted-foreground));
       --accent: hsl(var(--high-contrast-accent));
       --accent-foreground: hsl(var(--high-contrast-accent-foreground));
+      --destructive: hsl(var(--high-contrast-destructive));
+      --destructive-foreground: hsl(var(--high-contrast-destructive-foreground));
+      --border: hsl(var(--high-contrast-border));
+      --input: hsl(var(--high-contrast-input));
       --ring: hsl(var(--high-contrast-ring));
-      --card: hsl(0 0% 10%);
-      --card-foreground: hsl(0 0% 100%);
-      --popover: hsl(0 0% 5%);
-      --popover-foreground: hsl(0 0% 100%);
-      --secondary: hsl(0 0% 20%);
-      --secondary-foreground: hsl(0 0% 100%);
-      --muted: hsl(0 0% 15%);
-      --muted-foreground: hsl(0 0% 70%);
-      --destructive: hsl(0, 100%, 50%); /* Bright Red */
-      --destructive-foreground: hsl(0 0% 0%);
-      --border: hsl(0 0% 40%);
-      --input: hsl(0 0% 40%);
+      --sidebar-background: hsl(var(--high-contrast-sidebar-background));
+      --sidebar-foreground: hsl(var(--high-contrast-sidebar-foreground));
+      --sidebar-primary: hsl(var(--high-contrast-sidebar-primary));
+      --sidebar-primary-foreground: hsl(var(--high-contrast-sidebar-primary-foreground));
+      --sidebar-accent: hsl(var(--high-contrast-sidebar-accent));
+      --sidebar-accent-foreground: hsl(var(--high-contrast-sidebar-accent-foreground));
+      --sidebar-border: hsl(var(--high-contrast-sidebar-border));
+      --sidebar-ring: hsl(var(--high-contrast-sidebar-ring));
       --chart-1: hsl(var(--high-contrast-primary));
       --chart-2: hsl(var(--high-contrast-accent));
       --chart-3: hsl(210, 100%, 60%); /* Bright Blue */
       --chart-4: hsl(120, 100%, 50%); /* Bright Green */
       --chart-5: hsl(0, 100%, 60%); /* Bright Red */
-       /* Adjust sidebar specifically for high contrast */
-      --sidebar-background: hsl(0 0% 5%);
-      --sidebar-foreground: hsl(var(--high-contrast-foreground));
-      --sidebar-primary: hsl(var(--high-contrast-primary));
-      --sidebar-primary-foreground: hsl(var(--high-contrast-primary-foreground));
-      --sidebar-accent: hsl(0 0% 15%);
-      --sidebar-accent-foreground: hsl(var(--high-contrast-accent));
-      --sidebar-border: hsl(0 0% 25%);
-      --sidebar-ring: hsl(var(--high-contrast-ring));
+      /* Adjust destructive specifically if needed */
+      --destructive: 0, 100%, 50%; /* Bright Red */
+      --destructive-foreground: 0 0% 0%;
    }
 
   /* Dark Mode Theme Overrides */
   body.theme-blue.dark {
-      /* Blue is default dark theme, no overrides needed in dark mode */
+      --background: hsl(var(--blue-background));
+      --foreground: hsl(var(--blue-foreground));
+      --card: hsl(var(--blue-card));
+      --card-foreground: hsl(var(--blue-card-foreground));
+      --popover: hsl(var(--blue-popover));
+      --popover-foreground: hsl(var(--blue-popover-foreground));
+      --primary: hsl(var(--blue-primary));
+      --primary-foreground: hsl(var(--blue-primary-foreground));
+      --secondary: hsl(var(--blue-secondary));
+      --secondary-foreground: hsl(var(--blue-secondary-foreground));
+      --muted: hsl(var(--blue-muted));
+      --muted-foreground: hsl(var(--blue-muted-foreground));
+      --accent: hsl(var(--blue-accent));
+      --accent-foreground: hsl(var(--blue-accent-foreground));
+      --border: hsl(var(--blue-border));
+      --input: hsl(var(--blue-border));
+      --ring: hsl(var(--blue-ring));
+      --sidebar-background: hsl(var(--blue-sidebar-background));
+      --sidebar-foreground: hsl(var(--blue-sidebar-foreground));
+      --sidebar-primary: hsl(var(--blue-sidebar-primary));
+      --sidebar-primary-foreground: hsl(var(--blue-sidebar-primary-foreground));
+      --sidebar-accent: hsl(var(--blue-sidebar-accent));
+      --sidebar-accent-foreground: hsl(var(--blue-sidebar-accent-foreground));
+      --sidebar-border: hsl(var(--blue-sidebar-border));
+      --sidebar-ring: hsl(var(--blue-sidebar-ring));
+      --chart-1: hsl(var(--blue-primary));
+      --chart-2: hsl(var(--blue-accent));
   }
   body.theme-pink.dark {
       --background: hsl(var(--pink-background));
       --foreground: hsl(var(--pink-foreground));
+      --card: hsl(var(--pink-card));
+      --card-foreground: hsl(var(--pink-card-foreground));
+      --popover: hsl(var(--pink-popover));
+      --popover-foreground: hsl(var(--pink-popover-foreground));
       --primary: hsl(var(--pink-primary));
       --primary-foreground: hsl(var(--pink-primary-foreground));
+      --secondary: hsl(var(--pink-secondary));
+      --secondary-foreground: hsl(var(--pink-secondary-foreground));
+      --muted: hsl(var(--pink-muted));
+      --muted-foreground: hsl(var(--pink-muted-foreground));
       --accent: hsl(var(--pink-accent));
       --accent-foreground: hsl(var(--pink-accent-foreground));
+      --border: hsl(var(--pink-border));
+      --input: hsl(var(--pink-border));
       --ring: hsl(var(--pink-ring));
-      /* Add other variables like card, popover, secondary if needed, or let them inherit */
-      --card: hsl(var(--pink-background) / 0.9);
-      --card-foreground: hsl(var(--pink-foreground));
-      --popover: hsl(var(--pink-background) / 0.85);
-      --popover-foreground: hsl(var(--pink-foreground));
-      --secondary: hsl(var(--pink-primary) / 0.1);
-      --secondary-foreground: hsl(var(--pink-foreground));
-      --muted: hsl(var(--pink-primary) / 0.05);
-      --muted-foreground: hsl(var(--pink-foreground) / 0.7);
-      --border: hsl(var(--pink-primary) / 0.2);
-      --input: hsl(var(--pink-primary) / 0.2);
+      --sidebar-background: hsl(var(--pink-sidebar-background));
+      --sidebar-foreground: hsl(var(--pink-sidebar-foreground));
+      --sidebar-primary: hsl(var(--pink-sidebar-primary));
+      --sidebar-primary-foreground: hsl(var(--pink-sidebar-primary-foreground));
+      --sidebar-accent: hsl(var(--pink-sidebar-accent));
+      --sidebar-accent-foreground: hsl(var(--pink-sidebar-accent-foreground));
+      --sidebar-border: hsl(var(--pink-sidebar-border));
+      --sidebar-ring: hsl(var(--pink-sidebar-ring));
       --chart-1: hsl(var(--pink-primary));
       --chart-2: hsl(var(--pink-accent));
-      --sidebar-background: hsl(var(--pink-background) / 0.8);
-      --sidebar-foreground: hsl(var(--pink-foreground));
-      --sidebar-primary: hsl(var(--pink-primary));
-      --sidebar-primary-foreground: hsl(var(--pink-primary-foreground));
-      --sidebar-accent: hsl(var(--pink-primary) / 0.15);
-      --sidebar-accent-foreground: hsl(var(--pink-accent-foreground));
-      --sidebar-border: hsl(var(--pink-primary) / 0.25);
-      --sidebar-ring: hsl(var(--pink-ring));
   }
   body.theme-green.dark {
       --background: hsl(var(--green-background));
       --foreground: hsl(var(--green-foreground));
+      --card: hsl(var(--green-card));
+      --card-foreground: hsl(var(--green-card-foreground));
+      --popover: hsl(var(--green-popover));
+      --popover-foreground: hsl(var(--green-popover-foreground));
       --primary: hsl(var(--green-primary));
       --primary-foreground: hsl(var(--green-primary-foreground));
+      --secondary: hsl(var(--green-secondary));
+      --secondary-foreground: hsl(var(--green-secondary-foreground));
+      --muted: hsl(var(--green-muted));
+      --muted-foreground: hsl(var(--green-muted-foreground));
       --accent: hsl(var(--green-accent));
       --accent-foreground: hsl(var(--green-accent-foreground));
+      --border: hsl(var(--green-border));
+      --input: hsl(var(--green-border));
       --ring: hsl(var(--green-ring));
-      --card: hsl(var(--green-background) / 0.9);
-      --card-foreground: hsl(var(--green-foreground));
-      --popover: hsl(var(--green-background) / 0.85);
-      --popover-foreground: hsl(var(--green-foreground));
-      --secondary: hsl(var(--green-primary) / 0.1);
-      --secondary-foreground: hsl(var(--green-foreground));
-      --muted: hsl(var(--green-primary) / 0.05);
-      --muted-foreground: hsl(var(--green-foreground) / 0.7);
-      --border: hsl(var(--green-primary) / 0.2);
-      --input: hsl(var(--green-primary) / 0.2);
+      --sidebar-background: hsl(var(--green-sidebar-background));
+      --sidebar-foreground: hsl(var(--green-sidebar-foreground));
+      --sidebar-primary: hsl(var(--green-sidebar-primary));
+      --sidebar-primary-foreground: hsl(var(--green-sidebar-primary-foreground));
+      --sidebar-accent: hsl(var(--green-sidebar-accent));
+      --sidebar-accent-foreground: hsl(var(--green-sidebar-accent-foreground));
+      --sidebar-border: hsl(var(--green-sidebar-border));
+      --sidebar-ring: hsl(var(--green-sidebar-ring));
       --chart-1: hsl(var(--green-primary));
       --chart-2: hsl(var(--green-accent));
-      --sidebar-background: hsl(var(--green-background) / 0.8);
-      --sidebar-foreground: hsl(var(--green-foreground));
-      --sidebar-primary: hsl(var(--green-primary));
-      --sidebar-primary-foreground: hsl(var(--green-primary-foreground));
-      --sidebar-accent: hsl(var(--green-primary) / 0.15);
-      --sidebar-accent-foreground: hsl(var(--green-accent-foreground));
-      --sidebar-border: hsl(var(--green-primary) / 0.25);
-      --sidebar-ring: hsl(var(--green-ring));
   }
 
 
