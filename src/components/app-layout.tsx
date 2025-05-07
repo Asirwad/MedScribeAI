@@ -345,7 +345,7 @@ function AppLayoutContent({
              </Button>
           <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
              {/* Link to Settings Page */}
-             <Link href="/settings" passHref legacyBehavior>
+             <Link href="/dashboard/settings" passHref legacyBehavior>
                 <Button
                    asChild={false} // Use Button directly, not Slot
                    variant="ghost"
@@ -420,3 +420,4 @@ function MobileHeader({ onReturnToLanding }: { onReturnToLanding: () => void }) 
      </header>
   );
 }
+
