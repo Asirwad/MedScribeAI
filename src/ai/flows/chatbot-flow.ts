@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A chatbot flow using Genkit for the MedScribeAI Assistant.
+ * @fileOverview A chatbot flow using Genkit or Llama for the MedScribeAI Assistant.
  *
  * - chatWithAssistant - A function that handles the chatbot interaction.
  * - ChatMessage - Represents a single message in the chat history.
@@ -8,160 +8,191 @@
  * - ChatOutput - The return type for the chatWithAssistant function.
  */
 
-import { ai } from '@/ai/ai-instance'; // ai instance already configured with default model
-import { z } from 'genkit';
-import type { GenerateResponse, MessageData } from 'genkit'; // Import GenerateResponse and MessageData types
+import { z } from 'zod';
+import type { GenerateResponse, MessageData } from 'genkit'; // Genkit types
+import { ai } from '@/ai/ai-instance'; // Genkit instance
+import { llmProvider } from '@/config/llm-config'; // LLM provider config
+import { llamaChatCompletion, type OpenAIMessage } from '@/lib/llama-client'; // Llama client
 
-// Define the structure for a single chat message
+// --- Schemas (Shared) ---
 const ChatMessageSchema = z.object({
-  role: z.enum(['user', 'model'] as const), // 'model' for AI responses
+  role: z.enum(['user', 'model', 'system'] as const), // Allow 'system' role internally if needed
   content: z.string(),
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 
-// Define the input schema: user message and optional history
 const ChatInputSchema = z.object({
   message: z.string().describe('The latest message from the user.'),
-  history: z.array(ChatMessageSchema).optional().describe('The previous conversation history.'),
+  history: z.array(ChatMessageSchema).optional().describe('The previous conversation history (user and model messages only).'),
 });
 export type ChatInput = z.infer<typeof ChatInputSchema>;
 
-// Define the output schema: the AI's response message
 const ChatOutputSchema = z.object({
   response: z.string().describe("The assistant's response message."),
 });
 export type ChatOutput = z.infer<typeof ChatOutputSchema>;
 
-// Exported function to be called by the frontend
+// --- System Prompt (Shared) ---
+const systemPrompt = `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice. Keep responses brief unless asked for details.`;
+
+
+// --- Exported Function ---
 export async function chatWithAssistant(input: ChatInput): Promise<ChatOutput> {
-  console.log("[chatWithAssistant] Entered function with input:", JSON.stringify(input, null, 2));
-  try {
-    // Call the Genkit flow defined below
-    console.log("[chatWithAssistant] Calling chatbotFlow...");
-    const flowResult = await chatbotFlow(input);
-    console.log("[chatWithAssistant] chatbotFlow returned:", JSON.stringify(flowResult, null, 2));
+    console.log("[chatWithAssistant] Entered function with input:", JSON.stringify(input, null, 2));
 
-    // Validate the flow result against the expected schema (already done within the flow)
-    // The flow itself now guarantees the output shape or throws an error.
-
-     if (!flowResult?.response || flowResult.response.trim() === '') {
-        console.warn("[chatWithAssistant] Received empty or whitespace-only response from flow.");
-        // Return a user-friendly message in the correct schema
-        return { response: "Sorry, I couldn't generate a valid response." };
+    // Validate input
+    const validationResult = ChatInputSchema.safeParse(input);
+    if (!validationResult.success) {
+      console.error("[chatWithAssistant] Invalid input:", validationResult.error);
+      return { response: `Invalid input: ${validationResult.error.message}` };
     }
 
-    console.log("[chatWithAssistant] Successfully processed request. Returning response:", flowResult.response);
-    return flowResult; // Directly return the validated flow result
+    const validatedInput = validationResult.data;
 
-  } catch (error: unknown) {
-    console.error("[chatWithAssistant] Error executing chatbotFlow:", error);
-    let errorMessage = "An error occurred while processing your chat request.";
-    if (error instanceof Error) {
-      // Modify the error message to be more user-friendly and less technical
-      if (error.message.includes("Unsupported Part type")) {
-          errorMessage = "Sorry, I'm having trouble understanding the conversation format. Please try rephrasing or starting a new chat.";
-      } else if (error.message.includes("reading 'content'")) {
-           errorMessage = "Sorry, there was an issue processing part of the conversation. Could you try again?";
+    try {
+      console.log(`[chatWithAssistant] Using provider: ${llmProvider}`);
+      let responseText: string;
+
+      if (llmProvider === 'GEMINI') {
+         console.log("[chatWithAssistant] Calling Genkit/Gemini logic...");
+         responseText = await runChatGenkit(validatedInput);
+      } else if (llmProvider === 'LLAMA') {
+          console.log("[chatWithAssistant] Calling Llama logic...");
+          responseText = await runChatLlama(validatedInput);
       } else {
-           errorMessage = `Error: ${error.message}. Please try again.`;
+          throw new Error(`Unsupported LLM provider: ${llmProvider}`);
       }
-      console.error("  Detailed Error Message:", error.message); // Log the detailed error message
 
-      if (process.env.NODE_ENV === 'development' && error.stack) {
-           console.error("  Error Stack:", error.stack);
+      // Basic validation of the response text
+      if (!responseText || responseText.trim() === '') {
+          console.warn("[chatWithAssistant] Received empty or whitespace-only response from provider.");
+          return { response: "Sorry, I couldn't generate a valid response." };
       }
-    } else {
-      console.error("  Caught a non-Error exception:", error);
+
+      console.log("[chatWithAssistant] Successfully processed request. Returning response:", responseText);
+      // Ensure output matches the schema
+      return ChatOutputSchema.parse({ response: responseText });
+
+    } catch (error: unknown) {
+      console.error("[chatWithAssistant] Error processing chat request:", error);
+      let errorMessage = "An error occurred while processing your chat request.";
+      if (error instanceof Error) {
+        // Customize error messages based on potential issues
+        if (error.message.includes("API key") || error.message.includes("Authentication")) {
+             errorMessage = "There seems to be an issue connecting to the AI service. Please check the configuration.";
+        } else if (error.message.includes("Invalid response structure") || error.message.includes("validation failed")) {
+             errorMessage = "Received an unexpected response format from the AI. Please try again.";
+        } else if (error.message.includes("timeout") || error.message.includes("NetworkError")) {
+             errorMessage = "The request to the AI service timed out. Please check your connection and try again.";
+        } else {
+            // Use the error message directly for other cases, but keep it user-friendly
+            errorMessage = `Error: ${error.message}`;
+        }
+         console.error("  Detailed Error Message:", error.message);
+         if (process.env.NODE_ENV === 'development' && error.stack) {
+              console.error("  Error Stack:", error.stack);
+         }
+      } else {
+         console.error("  Caught a non-Error exception:", error);
+      }
+      // Return error wrapped in the expected schema
+      return { response: errorMessage };
     }
-    // Return a user-friendly error response wrapped in the expected schema
-    return { response: errorMessage };
-  }
 }
 
 
-// Define the Genkit flow using ai.generate directly
-const chatbotFlow = ai.defineFlow<typeof ChatInputSchema, typeof ChatOutputSchema>(
-  {
-    name: 'chatbotFlow',
-    inputSchema: ChatInputSchema,
-    outputSchema: ChatOutputSchema, // Ensure output matches this schema
-  },
-  async (input) => {
-    console.log("[chatbotFlow] Flow entered with input:", JSON.stringify(input, null, 2));
+// --- Genkit/Gemini Implementation ---
+async function runChatGenkit(input: ChatInput): Promise<string> {
+    console.log("[runChatGenkit] Preparing messages for Genkit...");
 
-    try {
-      // 1. Construct messages in the format expected by the AI model (MessageData[])
-      // Exclude the system prompt from this array now.
-      const messagesForAI: MessageData[] = [];
+    // 1. Construct messages in the format expected by Genkit (MessageData[])
+    const messagesForAI: MessageData[] = [];
 
-      // Add history messages next (user and model roles only)
-      if (input.history) {
+    // Add history messages (user and model roles only)
+    if (input.history) {
         input.history.forEach(msg => {
-          // Ensure roles are 'user' or 'model' and content is structured correctly
-          // Filter out any potential system messages from history (shouldn't be there, but safe)
-          if (msg.role === 'user' || msg.role === 'model') {
-             messagesForAI.push({
-               role: msg.role,
-               content: [{ text: msg.content }] // Gemini expects content as an array of parts
-             });
-          } else {
-             console.warn("[chatbotFlow] Skipping unexpected role in history:", msg.role);
-          }
+            // Filter out any potential system messages from history
+            if (msg.role === 'user' || msg.role === 'model') {
+                messagesForAI.push({
+                    role: msg.role,
+                    content: [{ text: msg.content }] // Gemini expects content as an array of parts
+                });
+            } else {
+                console.warn("[runChatGenkit] Skipping unexpected role in history:", msg.role);
+            }
         });
-      }
+    }
 
-      // Add the current user message last
-      messagesForAI.push({
+    // Add the current user message last
+    messagesForAI.push({
         role: 'user',
         content: [{ text: input.message }]
-      });
+    });
 
-      // Define the system prompt separately
-      const systemPrompt = `You are MedScribeAI Assistant, a helpful AI designed to answer questions about the MedScribeAI application, its features, and general medical documentation concepts. Be concise and informative. If you don't know the answer, say so politely. Do not provide medical advice. Keep responses brief unless asked for details.`;
+    // 2. Log arguments before calling ai.generate
+    const generateArgs = {
+        prompt: messagesForAI,
+        system: systemPrompt, // Use the shared system prompt
+        output: { format: 'text' as const },
+    };
+    console.log("[runChatGenkit] Calling ai.generate with arguments:", JSON.stringify(generateArgs, null, 2));
 
-      // 2. Log arguments before calling ai.generate
-      // Remove the explicit model specification - Genkit will use the default from ai-instance.ts
-      const generateArgs = {
-         prompt: messagesForAI,
-         system: systemPrompt,
-         output: { format: 'text' as const }, // Ensure type safety
-      };
-      console.log("[chatbotFlow] Calling ai.generate with arguments:", JSON.stringify(generateArgs, null, 2));
+    // 3. Call ai.generate
+    const modelResponse: GenerateResponse = await ai.generate(generateArgs);
+    console.log("[runChatGenkit] ai.generate response received.");
 
+    // 4. Extract and return the text response
+    const responseText = modelResponse?.text;
+    console.log("[runChatGenkit] Extracted text from model response:", responseText);
 
-      // Call ai.generate with the prepared messages and the system prompt
-      const modelResponse: GenerateResponse = await ai.generate(generateArgs);
-      console.log("[chatbotFlow] ai.generate response received.");
-
-      // 3. Extract the text response
-      const responseText = modelResponse?.text; // Use .text for v1.x
-      console.log("[chatbotFlow] Extracted text from model response:", responseText);
-
-      // 4. Validate and return the response
-      if (!responseText?.trim()) {
-        console.warn("[chatbotFlow] Received empty or invalid response from model.");
-        // Return a default error message matching the output schema
-        return { response: "Sorry, I couldn't generate a valid response at this moment." };
-      }
-
-      // Return the successful response, fitting the ChatOutputSchema
-      console.log("[chatbotFlow] Returning successful response.");
-      return { response: responseText };
-
-    } catch (error) {
-      console.error("[chatbotFlow] Error occurred during flow execution:", error);
-      // Log the error details within the flow as well
-      if (error instanceof Error) {
-          console.error("  Flow Error Message:", error.message);
-          if (error.stack) {
-              console.error("  Flow Error Stack:", error.stack);
-          }
-      } else {
-          console.error("  Caught non-Error exception in flow:", error);
-      }
-      // Re-throw the error to be caught by the calling function (chatWithAssistant)
-      // This allows the caller to handle the error presentation to the user.
-      throw error; // Let chatWithAssistant handle user-facing error message
+    if (!responseText?.trim()) {
+        console.warn("[runChatGenkit] Received empty or invalid response from model.");
+        throw new Error("Genkit model returned an empty response.");
     }
-  }
-);
+
+    return responseText;
+}
+
+
+// --- Llama Implementation ---
+async function runChatLlama(input: ChatInput): Promise<string> {
+     console.log("[runChatLlama] Preparing messages for Llama...");
+
+    // 1. Construct messages in OpenAI format
+    const messagesForAPI: OpenAIMessage[] = [];
+
+    // Add the system prompt first
+    messagesForAPI.push({ role: 'system', content: systemPrompt });
+
+    // Add history messages (user and assistant roles)
+    if (input.history) {
+        input.history.forEach(msg => {
+            // Map 'model' role to 'assistant' for OpenAI compatibility
+            if (msg.role === 'user' || msg.role === 'model') {
+                messagesForAPI.push({
+                    role: msg.role === 'model' ? 'assistant' : 'user',
+                    content: msg.content
+                });
+            } else {
+                 console.warn("[runChatLlama] Skipping unexpected role in history:", msg.role);
+            }
+        });
+    }
+
+    // Add the current user message last
+    messagesForAPI.push({ role: 'user', content: input.message });
+
+     console.log("[runChatLlama] Calling Llama client with messages:", JSON.stringify(messagesForAPI, null, 2));
+
+    // 2. Call the Llama client function
+    const responseContent = await llamaChatCompletion(messagesForAPI);
+    console.log("[runChatLlama] Received response content from Llama client:", responseContent);
+
+     if (!responseContent) {
+        console.error("[runChatLlama] Llama client returned empty content.");
+        throw new Error("Llama model returned empty content.");
+     }
+
+    // 3. Return the response content
+    return responseContent;
+}
