@@ -1,8 +1,10 @@
 /**
  * @fileOverview Client for interacting with an OpenAI-compatible Llama API endpoint.
+ * Uses the OpenAI SDK for making requests.
  */
 
-import { llamaApiEndpoint, llamaApiKey, llamaModelName } from '@/config/llm-config';
+import OpenAI from 'openai';
+import { llmProvider, llamaApiEndpoint, llamaApiKey, llamaModelName } from '@/config/llm-config';
 
 // Define the structure for OpenAI-compatible chat messages
 export interface OpenAIMessage {
@@ -10,30 +12,28 @@ export interface OpenAIMessage {
   content: string;
 }
 
-// Define the expected structure of a successful API response
-interface LlamaChatCompletionResponse {
-  choices: {
-    message: {
-      role: 'assistant';
-      content: string;
-    };
-    // Include other potential fields if needed, like finish_reason
-  }[];
-  // Include other potential top-level fields if needed
+// Initialize the OpenAI client for Llama (if configured)
+// The client is initialized once when the module is loaded.
+let llamaOpenAIClient: OpenAI | null = null;
+
+if (llmProvider === 'LLAMA' && llamaApiEndpoint && llamaApiKey) {
+  try {
+    llamaOpenAIClient = new OpenAI({
+      apiKey: llamaApiKey,
+      baseURL: llamaApiEndpoint, // This should be the base URL, e.g., "http://10.31.207.8:8000/v1"
+    });
+    console.log('[Llama Client] OpenAI SDK client initialized for Llama.');
+  } catch (error) {
+    console.error('[Llama Client] Failed to initialize OpenAI SDK for Llama:', error);
+    // Depending on the error, you might want to prevent further operations or log more details
+  }
+} else if (llmProvider === 'LLAMA' && (!llamaApiEndpoint || !llamaApiKey)) {
+  console.warn('[Llama Client] Llama provider selected, but API endpoint or key is missing. Llama client will not function.');
 }
 
-// Define the structure for API errors
-interface LlamaApiError {
-  error: {
-    message: string;
-    type?: string;
-    param?: string | null;
-    code?: string | null;
-  };
-}
 
 /**
- * Sends a chat completion request to the configured Llama API endpoint.
+ * Sends a chat completion request to the configured Llama API endpoint using the OpenAI SDK.
  * Implements basic retry logic with exponential backoff for transient errors.
  *
  * @param messages An array of messages representing the conversation history and prompt.
@@ -50,18 +50,10 @@ export async function llamaChatCompletion(
     if (llmProvider !== 'LLAMA') {
         throw new Error('Llama client called when LLM provider is not set to LLAMA.');
     }
-    if (!llamaApiEndpoint || !llamaApiKey) {
-        console.error('[Llama Client] API endpoint or key is missing.');
-        throw new Error('Llama API endpoint or key is not configured.');
+    if (!llamaOpenAIClient) {
+        console.error('[Llama Client] OpenAI SDK client for Llama is not initialized. Check configuration.');
+        throw new Error('Llama client (OpenAI SDK) is not initialized. API endpoint or key might be missing or invalid.');
     }
-
-    const body = JSON.stringify({
-        model: llamaModelName,
-        messages: messages,
-        // Add other parameters like temperature, max_tokens if needed
-        // temperature: 0.7,
-        // max_tokens: 1024,
-    });
 
     let attempts = 0;
     let delay = initialDelayMs;
@@ -69,68 +61,55 @@ export async function llamaChatCompletion(
     while (attempts <= maxRetries) {
         attempts++;
         try {
-            console.log(`[Llama Client] Attempt ${attempts}: Sending request to ${llamaApiEndpoint}`);
-            const response = await fetch(llamaApiEndpoint + '/chat/completions', { // Ensure correct path
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${llamaApiKey}`,
-                },
-                body: body,
+            console.log(`[Llama Client] Attempt ${attempts}: Sending request with OpenAI SDK. Model: ${llamaModelName}`);
+            const chatResponse = await llamaOpenAIClient.chat.completions.create({
+                model: llamaModelName, // Use the configured Llama model name
+                messages: messages,
+                // stream: false, // Explicitly set stream to false if not streaming
+                // temperature: 0.7, // Optional: Adjust temperature
+                // max_tokens: 1024,  // Optional: Adjust max tokens
             });
 
-            console.log(`[Llama Client] Attempt ${attempts}: Received status code ${response.status}`);
+            console.log('[Llama Client] API call successful with OpenAI SDK.');
 
-            if (!response.ok) {
-                const errorData: LlamaApiError | string = await response.json().catch(() => response.text());
-                const errorMessage = typeof errorData === 'string'
-                    ? `API Error: ${response.status} ${response.statusText}. Response: ${errorData}`
-                    : `API Error: ${response.status} ${response.statusText}. ${errorData?.error?.message || 'Unknown API error'}`;
+            const content = chatResponse.choices[0]?.message?.content;
 
-                console.error(`[Llama Client] Attempt ${attempts} failed: ${errorMessage}`, errorData);
+            if (!content) {
+                 console.warn('[Llama Client] API response structure unexpected or content missing using OpenAI SDK:', chatResponse);
+                 throw new Error('Invalid response structure received from Llama API via OpenAI SDK.');
+            }
 
-                // Retry only on specific server errors (e.g., 5xx) or rate limits (429)
-                if (response.status >= 500 || response.status === 429) {
-                    if (attempts > maxRetries) {
-                         throw new Error(`API request failed after ${maxRetries + 1} attempts: ${errorMessage}`);
-                    }
-                    console.log(`[Llama Client] Retrying in ${delay}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2; // Exponential backoff
-                    continue; // Retry the loop
-                } else {
-                    // Don't retry for client errors (4xx, except 429)
-                    throw new Error(`API request failed: ${errorMessage}`);
+            return content.trim();
+
+        } catch (error: any) {
+            console.error(`[Llama Client] Attempt ${attempts}: OpenAI SDK error:`, error);
+
+            // Check for OpenAI specific APIError or generic errors
+            let isRetryable = false;
+            if (error instanceof OpenAI.APIError) {
+                console.error(`[Llama Client] OpenAI APIError: Status ${error.status}, Type ${error.type}, Message: ${error.message}`);
+                // Retry on server errors (5xx) or rate limits (429)
+                if (error.status && (error.status >= 500 || error.status === 429)) {
+                    isRetryable = true;
                 }
+            } else {
+                // For generic network errors, assume retryable unless it's the last attempt
+                isRetryable = true;
             }
 
-            // Success
-            const result = await response.json() as LlamaChatCompletionResponse;
-            console.log('[Llama Client] API call successful.');
 
-            if (!result.choices || result.choices.length === 0 || !result.choices[0].message?.content) {
-                 console.warn('[Llama Client] API response structure unexpected or content missing:', result);
-                 throw new Error('Invalid response structure received from Llama API.');
+            if (isRetryable && attempts <= maxRetries) {
+                console.log(`[Llama Client] Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2; // Exponential backoff
+                continue; // Retry the loop
+            } else {
+                const finalErrorMessage = error.message || 'Unknown Llama client error with OpenAI SDK.';
+                throw new Error(`API request failed after ${attempts} attempts: ${finalErrorMessage}`);
             }
-
-            return result.choices[0].message.content.trim();
-
-        } catch (error) {
-            console.error(`[Llama Client] Attempt ${attempts}: Network or fetch error:`, error);
-            if (attempts > maxRetries) {
-                 const message = error instanceof Error ? error.message : 'Unknown fetch error';
-                 throw new Error(`Network or fetch error after ${maxRetries + 1} attempts: ${message}`);
-            }
-            console.log(`[Llama Client] Retrying network/fetch error in ${delay}ms...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            delay *= 2; // Exponential backoff
         }
     }
 
      // Should not be reached if maxRetries >= 0, but satisfies TS compiler
-    throw new Error('Llama chat completion failed unexpectedly.');
+    throw new Error('Llama chat completion failed unexpectedly with OpenAI SDK.');
 }
-
-// --- Helper to check provider ---
-// (Imported from config, but adding here for clarity in this standalone example)
-import { llmProvider } from '@/config/llm-config';
