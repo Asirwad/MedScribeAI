@@ -153,7 +153,7 @@ export function LandingPage({ onEnterApp }: LandingPageProps) {
               className="w-full md:w-1/2 lg:w-2/5 mt-10 md:mt-0"> {/* Controlled width, removed top margin on desktop */}
              <Image
                data-ai-hint="doctor patient interaction modern illustration medical ai"
-               src="https://www.scribemd.ai/assets/new_hero-86ac943aebdbd5be8d6318cf384a04b227882cca5e3243bae78aacb277050800.svg" // Placeholder image
+               src="/image.png" // Placeholder image
                alt="MedScribeAI in action"
                width={450} // Slightly increased width for side-by-side
                height={338} // Adjusted height proportionally
