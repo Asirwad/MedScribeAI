@@ -5,9 +5,9 @@ import '../globals.css'; // Use relative path for globals.css
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider as NextThemesProvider } from 'next-themes'; // Standard NextThemesProvider
 import { cn } from '@/lib/utils';
-// Removed DashboardThemeProvider import
 
-
+// Font configurations are still useful for metadata or if any specific styling needs them directly,
+// but for global font application, RootLayout handles it.
 const openSans = Open_Sans({
   variable: '--font-open-sans',
   subsets: ['latin'],
@@ -24,28 +24,25 @@ export const metadata: Metadata = {
   description: 'Agentic Clinical Documentation Assistant - Landing Page',
 };
 
-export default function LandingLayout({ // Changed name from MarketingLayout
+export default function LandingLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Removed <html> and <body> tags.
+  // The cn(openSans.variable, poppins.variable) and "antialiased font-sans"
+  // are applied by the RootLayout.
   return (
-    <html lang="en" className={cn(openSans.variable, poppins.variable)} suppressHydrationWarning>
-      <body
-        className="antialiased font-sans"
+    <NextThemesProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
       >
-        {/* Landing page uses the standard NextThemesProvider */}
-        {/* Removed DashboardThemeProvider wrapper */}
-        <NextThemesProvider
-            attribute="class"
-            defaultTheme="system" 
-            enableSystem
-            disableTransitionOnChange
-          >
-            {children}
-            <Toaster />
-        </NextThemesProvider>
-      </body>
-    </html>
+        {children}
+        {/* Toaster is also in RootLayout. This might be redundant but doesn't cause the hydration error.
+            For cleaner structure, one might remove this if RootLayout's Toaster is sufficient. */}
+        <Toaster />
+    </NextThemesProvider>
   );
 }
