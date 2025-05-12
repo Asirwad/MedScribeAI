@@ -5,7 +5,7 @@ import '../globals.css'; // Use relative path for globals.css
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { cn } from '@/lib/utils';
-import { DashboardThemeProvider } from '@/context/dashboard-theme-provider';
+// Removed DashboardThemeProvider import
 
 const openSans = Open_Sans({
   variable: '--font-open-sans',
@@ -31,17 +31,16 @@ export default function DashboardLayout({
   return (
     // Root html and body tags are in the main src/app/layout.tsx
     // This layout applies specifically to dashboard routes
-     <DashboardThemeProvider>
-        <NextThemesProvider
-            attribute="class"
-            defaultTheme="system" // This will be overridden by DashboardThemeProvider's logic
-            enableSystem
-            disableTransitionOnChange
-            // storageKey="next-theme" // Standard key for next-themes
-        >
-            {children}
-            {/* Toaster can be here or in the root layout depending on preference */}
-        </NextThemesProvider>
-     </DashboardThemeProvider>
+    // Removed DashboardThemeProvider wrapper
+    <NextThemesProvider
+        attribute="class"
+        defaultTheme="system" // next-themes will manage light/dark based on system or user preference
+        enableSystem
+        disableTransitionOnChange
+        // storageKey="next-theme" // Standard key for next-themes
+    >
+        {children}
+        {/* Toaster can be here or in the root layout depending on preference */}
+    </NextThemesProvider>
   );
 }

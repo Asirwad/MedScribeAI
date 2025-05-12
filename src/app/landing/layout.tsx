@@ -5,7 +5,7 @@ import '../globals.css'; // Use relative path for globals.css
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider as NextThemesProvider } from 'next-themes'; // Standard NextThemesProvider
 import { cn } from '@/lib/utils';
-import { DashboardThemeProvider } from '@/context/dashboard-theme-provider';
+// Removed DashboardThemeProvider import
 
 
 const openSans = Open_Sans({
@@ -34,10 +34,9 @@ export default function LandingLayout({ // Changed name from MarketingLayout
       <body
         className="antialiased font-sans"
       >
-        {/* Landing page uses the standard NextThemesProvider without Dashboard specific themes */}
-        {/* Wrap with DashboardThemeProvider to ensure context is available if any component needs it, though landing page doesn't use its themes */}
-        <DashboardThemeProvider>
-          <NextThemesProvider
+        {/* Landing page uses the standard NextThemesProvider */}
+        {/* Removed DashboardThemeProvider wrapper */}
+        <NextThemesProvider
             attribute="class"
             defaultTheme="system" 
             enableSystem
@@ -45,8 +44,7 @@ export default function LandingLayout({ // Changed name from MarketingLayout
           >
             {children}
             <Toaster />
-          </NextThemesProvider>
-        </DashboardThemeProvider>
+        </NextThemesProvider>
       </body>
     </html>
   );
