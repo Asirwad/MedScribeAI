@@ -28,12 +28,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Brain } from 'lucide-react';
 import { AddPatientForm } from '@/components/add-patient-form';
-import { SettingsDialog } from '@/components/settings-dialog';
 import { AgentVisualizationOverlay, AgentState } from '@/components/agent-visualization-overlay';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { ChatBubble } from '@/components/chat-bubble';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 
 const MIN_AGENT_STATE_DISPLAY_TIME = 1500;
 
@@ -53,14 +52,13 @@ export default function DashboardPage() {
   const [isFetchingPatientDetails, setIsFetchingPatientDetails] = useState<boolean>(false);
   const [patientHistory, setPatientHistory] = useState<string>('');
   const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false);
-  const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const agentStateTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [agentState, setAgentState] = useState<AgentState>('idle');
   const [isListening, setIsListening] = useState<boolean>(false);
   const [isSidebarInitiallyOpen, setIsSidebarInitiallyOpen] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter();
 
   const [patientDataContextForChat, setPatientDataContextForChat] = useState<string | null>(null);
 
@@ -102,11 +100,11 @@ export default function DashboardPage() {
     setIsSavingNote(false);
     setIsTranscribing(false);
     setPatientHistory('');
-    setPatientDataContextForChat(null); // Clear chat context
+    setPatientDataContextForChat(null);
     setIsListening(false);
     setAgentState('idle');
     if (!keepPatientList) {
-        setPatients([]); // Optionally clear patient list
+        setPatients([]);
     }
     if (agentStateTimerRef.current) {
       clearTimeout(agentStateTimerRef.current);
@@ -114,7 +112,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Function to serialize patient data for the chatbot
   const serializePatientDataForChat = useCallback((patient: Patient | null, obs: Observation[], enc: Encounter[], note: string, history: string) => {
     if (!patient) return null;
     return JSON.stringify({
@@ -143,7 +140,7 @@ export default function DashboardPage() {
     setObservations([]);
     setEncounters([]);
     setPatientHistory('');
-    setPatientDataContextForChat(null); // Clear chat context before fetching new
+    setPatientDataContextForChat(null);
     if (clearGeneratedFields) {
       setTranscript('');
       setSoapNote('');
@@ -176,7 +173,6 @@ export default function DashboardPage() {
       const history = `Patient: ${patientName}, DOB: ${patientDOB}, Gender: ${patientGender}\nRecent Observations: ${recentObsSummary}\nRecent Encounters: ${recentEncSummary}`.trim();
       setPatientHistory(history);
 
-      // Update chat context after all data is fetched
       setPatientDataContextForChat(serializePatientDataForChat(patientData, obsData, encData, clearGeneratedFields ? '' : soapNote, history));
 
       transitionAgentState('fetching_data', 'idle');
@@ -225,9 +221,9 @@ export default function DashboardPage() {
         console.log("[loadPatientsList] Final selection is null, resetting app state.");
         resetAppState();
       }
-    } catch (error) {
-      console.error('[loadPatientsList] Error loading patients list:', error);
-      toast({ title: 'Error Loading Patients', description: 'Could not load the patient list.', variant: 'destructive' });
+    } catch (error: any) {
+      console.error('[loadPatientsList] Error loading patients list:', error.message);
+      toast({ title: 'Error Loading Patients', description: error.message || 'Could not load the patient list.', variant: 'destructive' });
       setPatients([]);
       resetAppState();
     } finally {
@@ -260,7 +256,6 @@ export default function DashboardPage() {
     setTranscript(newTranscript);
     setSoapNote('');
     setBillingCodes([]);
-    // Update chat context if patient is selected
     if (selectedPatient) {
         setPatientDataContextForChat(serializePatientDataForChat(selectedPatient, observations, encounters, '', patientHistory));
     }
@@ -269,7 +264,6 @@ export default function DashboardPage() {
   const handleTranscriptionResult = useCallback((newTranscriptChunk: string) => {
     setTranscript(prev => {
         const updatedTranscript = prev ? `${prev}\n${newTranscriptChunk}` : newTranscriptChunk;
-        // Update chat context
         if (selectedPatient) {
             setPatientDataContextForChat(serializePatientDataForChat(selectedPatient, observations, encounters, '', patientHistory));
         }
@@ -329,9 +323,6 @@ export default function DashboardPage() {
       transitionAgentState('error');
     } finally {
       setIsGeneratingCodes(false);
-      // This was setIsGeneratingSoap(false) - check if this is intended or should be setIsGeneratingCodes(false)
-      // If SOAP generation calls this, then setIsGeneratingSoap(false) makes sense after codes are done.
-      // Assuming the intent is that code generation is the final step of SOAP generation process from user's perspective.
       setIsGeneratingSoap(false); 
     }
   }, [toast, transitionAgentState, isMobile]);
@@ -346,7 +337,7 @@ export default function DashboardPage() {
       return;
     }
     setIsGeneratingSoap(true);
-    setIsGeneratingCodes(true); // Set this true as codes will be generated after SOAP
+    setIsGeneratingCodes(true);
     setSoapNote('');
     setBillingCodes([]);
     transitionAgentState('generating_soap', 'generating_codes');
@@ -357,27 +348,53 @@ export default function DashboardPage() {
         patientHistory: patientHistory,
       });
       setSoapNote(result.soapNote);
-      // Update chat context with the new SOAP note
       setPatientDataContextForChat(serializePatientDataForChat(selectedPatient, observations, encounters, result.soapNote, patientHistory));
 
       if (!isMobile) {
         toast({ title: 'SOAP Note Generated', description: 'Review and edit the note below. Generating codes...' });
       }
-      // After SOAP note is generated, call to generate billing codes
+      
+      // Save observations and encounter related to this SOAP note generation
+      const { assessment, objectiveSummary, subjectiveSummary, planSummary } = parseSoapNoteForData(result.soapNote);
+      const currentDate = getCurrentDateString();
+      
+      const encounterReason = assessment || subjectiveSummary || 'Clinical Documentation Session';
+      await addEncounter(selectedPatient.id, { class: 'documentation', startDate: currentDate, reason: encounterReason });
+      console.log(`[handleGenerateSoapNote] Added ENCOUNTER for patient ${selectedPatient.id}. Reason: ${encounterReason}`);
+
+      if (assessment) {
+        await addObservation(selectedPatient.id, { code: 'Diagnosis', value: assessment, date: currentDate });
+      }
+      if (subjectiveSummary) {
+        await addObservation(selectedPatient.id, { code: 'ChiefComplaint', value: subjectiveSummary, date: currentDate });
+      }
+      if (objectiveSummary) {
+        await addObservation(selectedPatient.id, { code: 'ObjectiveSummary', value: objectiveSummary, date: currentDate });
+      }
+      if (planSummary) {
+        await addObservation(selectedPatient.id, { code: 'PlanSummary', value: planSummary, date: currentDate });
+      }
+      console.log(`[handleGenerateSoapNote] Added relevant OBSERVATIONS for patient ${selectedPatient.id} from SOAP note.`);
+
+      // After SOAP note and related data are processed, generate billing codes
       if (handleGenerateBillingCodesRef.current) {
         await handleGenerateBillingCodesRef.current(result.soapNote);
       } else {
          console.error("handleGenerateBillingCodes function reference not available yet.");
          toast({ title: 'Code Generation Skipped', description: 'Internal error prevented code suggestion.', variant: 'warning' });
-         // If code generation cannot be called, ensure states are reset properly.
-         transitionAgentState('generating_soap', 'idle'); // Go to idle if codes cannot be generated
-         setIsGeneratingCodes(false); // Codes are not being generated
-         setIsGeneratingSoap(false); // Soap is done (though codes part failed)
+         transitionAgentState('generating_soap', 'idle');
+         setIsGeneratingCodes(false);
+         setIsGeneratingSoap(false);
       }
+      // Refresh patient data to show new encounter/observations immediately
+      if (fetchPatientDataRef.current) {
+        await fetchPatientDataRef.current(selectedPatient.id, false);
+      }
+
     } catch (error) {
-      console.error('Error generating SOAP note:', error);
-      toast({ title: 'SOAP Generation Failed', description: 'Could not generate SOAP note.', variant: 'destructive' });
-      setIsGeneratingSoap(false); // Reset both on SOAP error
+      console.error('Error generating SOAP note or saving related data:', error);
+      toast({ title: 'SOAP Generation Failed', description: 'Could not generate SOAP note or save related data.', variant: 'destructive' });
+      setIsGeneratingSoap(false);
       setIsGeneratingCodes(false);
       transitionAgentState('error');
     }
@@ -405,38 +422,23 @@ export default function DashboardPage() {
     try {
       await postNote(selectedPatient.id, finalNote);
       console.log(`[handleSaveNote] Successfully posted NOTE for patient ${selectedPatient.id}.`);
-      const { assessment, objectiveSummary, subjectiveSummary, planSummary } = parseSoapNoteForData(finalNote);
-      const currentDate = getCurrentDateString();
-      const encounterReason = assessment || subjectiveSummary || 'Clinical Encounter';
-      await addEncounter(selectedPatient.id, { class: 'outpatient', startDate: currentDate, reason: encounterReason });
-      console.log(`[handleSaveNote] Successfully added ENCOUNTER for patient ${selectedPatient.id}. Reason: ${encounterReason}`);
-      if (assessment) {
-        await addObservation(selectedPatient.id, { code: 'Diagnosis', value: assessment, date: currentDate });
-        console.log(`[handleSaveNote] Successfully added OBSERVATION (Diagnosis) for patient ${selectedPatient.id}.`);
-      }
-      if (subjectiveSummary) {
-        await addObservation(selectedPatient.id, { code: 'ChiefComplaint', value: subjectiveSummary, date: currentDate });
-        console.log(`[handleSaveNote] Successfully added OBSERVATION (ChiefComplaint) for patient ${selectedPatient.id}.`);
-      }
-      if (objectiveSummary) {
-        await addObservation(selectedPatient.id, { code: 'ObjectiveSummary', value: objectiveSummary, date: currentDate });
-        console.log(`[handleSaveNote] Successfully added OBSERVATION (ObjectiveSummary) for patient ${selectedPatient.id}.`);
-      }
-      if (planSummary) {
-        await addObservation(selectedPatient.id, { code: 'PlanSummary', value: planSummary, date: currentDate });
-        console.log(`[handleSaveNote] Successfully added OBSERVATION (PlanSummary) for patient ${selectedPatient.id}.`);
-      }
-      toast({ title: 'Note Saved', description: 'SOAP note and related Encounter/Observations saved.' });
+      
+      // The following logic for adding Encounter/Observations is now part of handleGenerateSoapNote
+      // If saving an edited note should also create new encounter/observations, this needs to be decided.
+      // For now, let's assume that the primary Encounter/Observations are created during generation.
+      // If saving the note itself should *also* update or add more, that logic can be re-added here.
+
+      toast({ title: 'Note Saved', description: 'SOAP note saved to EHR.' });
       if (fetchPatientDataRef.current) {
         console.log("[handleSaveNote] Refetching patient data after save...");
-        await fetchPatientDataRef.current(selectedPatient.id, false);
+        await fetchPatientDataRef.current(selectedPatient.id, false); // Keep generated SOAP, just refresh summary
       } else {
         console.error("fetchPatientData function reference not available after save.");
       }
       transitionAgentState('saving', 'idle');
     } catch (error) {
-      console.error('Error saving note or related records:', error);
-      toast({ title: 'Save Failed', description: 'Could not save the note or related records to EHR.', variant: 'destructive' });
+      console.error('Error saving note:', error);
+      toast({ title: 'Save Failed', description: 'Could not save the note to EHR.', variant: 'destructive' });
       transitionAgentState('error');
     } finally {
       setIsSavingNote(false);
@@ -500,8 +502,8 @@ export default function DashboardPage() {
   };
   
   const handleReturnToLanding = useCallback(() => {
-    resetAppState(false); // Clear patient list when returning to landing
-    router.push('/landing'); // Navigate to landing page
+    resetAppState(false);
+    router.push('/landing');
   }, [resetAppState, router]);
 
 
@@ -537,10 +539,9 @@ export default function DashboardPage() {
       selectedPatient={selectedPatient}
       onSelectPatient={handleSelectPatient}
       onAddPatient={() => setIsAddPatientDialogOpen(true)}
-      onReturnToLanding={handleReturnToLanding} // Pass the handler
+      onReturnToLanding={handleReturnToLanding}
       onPatientDeleted={handlePatientDeleted}
       onPatientUpdated={handlePatientUpdated}
-      onOpenSettings={() => setIsSettingsDialogOpen(true)} // Pass handler for settings
       initialSidebarOpen={isSidebarInitiallyOpen}
     >
       <div className={cn(
@@ -603,10 +604,6 @@ export default function DashboardPage() {
         isOpen={isAddPatientDialogOpen}
         onOpenChange={setIsAddPatientDialogOpen}
         onPatientAdded={handlePatientAdded}
-      />
-      <SettingsDialog
-        isOpen={isSettingsDialogOpen}
-        onOpenChange={setIsSettingsDialogOpen}
       />
       <ChatBubble 
         contextType="dashboard" 

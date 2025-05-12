@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react'; // Import useState, useMemo, useEffect
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Users, Settings, UserPlus, PanelLeft, Home, MoreVertical, Trash2, Edit, Search, X } from 'lucide-react'; // Added Search, X
+import { Users, Settings, UserPlus, PanelLeft, Home, MoreVertical, Trash2, Edit, Search, X } from 'lucide-react';
 import type { Patient } from '@/services/ehr_client';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { cn } from '@/lib/utils';
@@ -34,8 +34,8 @@ import {
 import { DeletePatientDialog } from '@/components/delete-patient-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { UpdatePatientForm } from '@/components/update-patient-form';
-import { Input } from '@/components/ui/input'; // Import Input
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'; // Import Tooltip components for search clear
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
 interface AppLayoutProps {
   patients: Patient[];
@@ -62,7 +62,7 @@ export function AppLayout({
 }: AppLayoutProps) {
   return (
     <SidebarProvider defaultOpen={initialSidebarOpen}>
-       <TooltipProvider> {/* Ensure TooltipProvider wraps the layout */}
+       <TooltipProvider>
         <AppLayoutContent
           patients={patients}
           selectedPatient={selectedPatient}
@@ -79,7 +79,6 @@ export function AppLayout({
   );
 }
 
-// Helper function for highlighting search terms
 const HighlightedText = ({ text, highlight, isSelected }: { text: string; highlight: string; isSelected: boolean }) => {
   if (!highlight) {
     return <span>{text}</span>;
@@ -91,10 +90,9 @@ const HighlightedText = ({ text, highlight, isSelected }: { text: string; highli
         part.toLowerCase() === highlight.toLowerCase() ? (
           <strong
             key={index}
-             // Apply different styling based on selection
              className={cn(
                 "font-bold",
-                isSelected ? "text-primary-foreground/80" : "text-primary" // Use foreground color variant for selected, primary for others
+                isSelected ? "text-primary-foreground/80" : "text-primary"
              )}
           >
             {part}
@@ -107,8 +105,6 @@ const HighlightedText = ({ text, highlight, isSelected }: { text: string; highli
   );
 };
 
-
-// Inner component to access sidebar context
 function AppLayoutContent({
   patients,
   selectedPatient,
@@ -118,13 +114,13 @@ function AppLayoutContent({
   onPatientDeleted,
   onPatientUpdated,
   children,
-}: Omit<AppLayoutProps, 'initialSidebarOpen'>) {
+}: Omit<AppLayoutProps, 'initialSidebarOpen' >) {
   const { isMobile, setOpenMobile } = useSidebar();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [patientToDelete, setPatientToDelete] = useState<Patient | null>(null);
   const [patientToUpdate, setPatientToUpdate] = useState<Patient | null>(null);
-  const [searchQuery, setSearchQuery] = useState(''); // State for search query
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
 
   const handlePatientSelectAndClose = (patientId: string) => {
@@ -186,7 +182,6 @@ function AppLayoutContent({
      }
   };
 
-   // Filter patients based on search query
    const filteredPatients = useMemo(() => {
      if (!searchQuery) {
        return patients;
@@ -196,15 +191,12 @@ function AppLayoutContent({
      );
    }, [patients, searchQuery]);
 
-   // Clear search query
    const clearSearch = () => {
        setSearchQuery('');
    };
 
-   // Close mobile sidebar if search query is cleared
    useEffect(() => {
        if (isMobile && !searchQuery) {
-           // Optional: Close mobile sidebar when search is cleared?
            // setOpenMobile(false);
        }
    }, [searchQuery, isMobile, setOpenMobile]);
@@ -224,11 +216,8 @@ function AppLayoutContent({
             <SidebarGroup className="p-0">
                <SidebarGroupLabel className="px-4 flex justify-between items-center text-xs font-semibold uppercase text-muted-foreground tracking-wider pt-2 pb-1">
                  <span>Patients</span>
-                 {/* Search Icon - Consider removing if input is always visible */}
-                 {/* <Search className="h-4 w-4 text-muted-foreground" /> */}
                </SidebarGroupLabel>
 
-                {/* Search Input - Positioned below the label */}
                 <div className="px-4 py-2 relative group-data-[collapsible=icon]:hidden">
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     <Input
@@ -236,7 +225,7 @@ function AppLayoutContent({
                        placeholder="Search patients..."
                        value={searchQuery}
                        onChange={(e) => setSearchQuery(e.target.value)}
-                       className="pl-8 h-8 text-sm bg-sidebar-accent/50 border-sidebar-border focus:ring-primary/50" // Adjusted style
+                       className="pl-8 h-8 text-sm bg-sidebar-accent/50 border-sidebar-border focus:ring-primary/50"
                     />
                     {searchQuery && (
                          <Tooltip>
@@ -266,7 +255,7 @@ function AppLayoutContent({
                     </p>
                   )}
                   {filteredPatients.map((patient) => {
-                    const isSelected = selectedPatient?.id === patient.id; // Check if current item is selected
+                    const isSelected = selectedPatient?.id === patient.id;
                     return (
                         <SidebarMenuItem key={patient.id} className="group/menu-item">
                            <div className="flex items-center w-full">
@@ -277,7 +266,6 @@ function AppLayoutContent({
                                 tooltip={patient.name}
                               >
                                  <Users />
-                                 {/* Use HighlightedText component, pass isSelected */}
                                  <span className="truncate">
                                      <HighlightedText text={patient.name} highlight={searchQuery} isSelected={isSelected} />
                                  </span>
@@ -332,7 +320,7 @@ function AppLayoutContent({
                 <Home /> <span className="group-data-[collapsible=icon]:hidden">Return Home</span>
              </Button>
           <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
-            <Button variant="ghost" className="flex-1 justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-none" aria-label='Settings'>
+            <Button variant="ghost" className="flex-1 justify-start gap-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:flex-none" aria-label='Settings' >
               <Settings /> <span className="group-data-[collapsible=icon]:hidden">Settings</span>
             </Button>
             <ThemeToggle />
@@ -390,13 +378,11 @@ function MobileHeader({ onReturnToLanding }: { onReturnToLanding: () => void }) 
            <PanelLeft className="h-5 w-5" />
         </Button>
          <button onClick={onReturnToLanding} className="flex items-center gap-1 outline-none focus:ring-2 focus:ring-ring rounded-md p-1 -m-1">
-             <svg className="h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+             {/* Using an inline SVG for MedScribeAI icon as Bot icon might not be ideal here if it's too generic */}
+             <svg className="h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg> {/* Example simple icon */}
             <span className="text-lg font-semibold text-primary">MedScribeAI</span>
          </button>
-         <div className="w-8 flex-shrink-0"></div>
+         <div className="w-8 flex-shrink-0"></div> {/* Spacer */}
      </header>
   );
 }
-
-
-    
