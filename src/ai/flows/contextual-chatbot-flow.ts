@@ -20,7 +20,7 @@ const ContextualChatMessageSchema = z.object({
 });
 export type ContextualChatMessage = z.infer<typeof ContextualChatMessageSchema>;
 
-export const ContextualChatInputSchema = z.object({
+const ContextualChatInputSchema = z.object({
   message: z.string().describe('The latest message from the user.'),
   history: z.array(ContextualChatMessageSchema).optional().describe('The previous conversation history (user and model messages only).'),
   contextType: z.enum(['landingPage', 'dashboard'] as const).describe("The context in which the chat is occurring."),
@@ -28,7 +28,7 @@ export const ContextualChatInputSchema = z.object({
 });
 export type ContextualChatInput = z.infer<typeof ContextualChatInputSchema>;
 
-export const ContextualChatOutputSchema = z.object({
+const ContextualChatOutputSchema = z.object({
   response: z.string().describe("The assistant's response message."),
 });
 export type ContextualChatOutput = z.infer<typeof ContextualChatOutputSchema>;
@@ -62,6 +62,8 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
   const validationResult = ContextualChatInputSchema.safeParse(input);
   if (!validationResult.success) {
     console.error("[contextualChatWithAssistant] Invalid input:", validationResult.error);
+    // It's better to return a structured error or a user-friendly message.
+    // Forcing a specific error format might not be ideal if the consumer expects ContextualChatOutputSchema.
     return { response: `Invalid input: ${validationResult.error.message}` };
   }
   const validatedInput = validationResult.data;
@@ -79,6 +81,9 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
     systemPromptText = dashboardSystemPromptTemplate;
     handlebarsArgs.patientDataContext = validatedInput.patientDataContext;
   } else {
+    // This case should ideally not be reached if input validation is exhaustive
+    // For example, if contextType was not one of the enum values.
+    // However, safeParse should catch this. This is a fallback.
     console.error("[contextualChatWithAssistant] Unknown contextType:", validatedInput.contextType);
     return { response: "Internal error: Unknown chat context." };
   }
@@ -105,12 +110,12 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
       prompt: messagesForAI, // This is an array of MessageData
       system: systemPromptText,
       templateArgs: handlebarsArgs, // Pass patientDataContext for Handlebars rendering in system prompt
-      output: { format: 'text' },
+      output: { format: 'text' }, // Expecting text output from Gemini
       // Ensure ai-instance.ts is configured to use a Gemini model by default or specify one here:
       // model: ai.getModel('gemini-1.5-flash-latest'), 
     });
 
-    const responseText = modelResponse.text;
+    const responseText = modelResponse.text; // Access the text property directly
     console.log("[contextualChatWithAssistant] ai.generate response received. Text:", responseText);
 
     if (!responseText?.trim()) {
@@ -119,7 +124,11 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
       return { response: "Sorry, I couldn't generate a response at this time. Please try again."};
     }
 
+    // Parse the responseText against the output schema
+    // If the output schema expects an object like { response: "..." }, then:
     return ContextualChatOutputSchema.parse({ response: responseText });
+    // If the schema was z.string(), then it would be:
+    // return ContextualChatOutputSchema.parse(responseText);
 
   } catch (error: unknown) {
     console.error("[contextualChatWithAssistant] Error processing chat request:", error);
