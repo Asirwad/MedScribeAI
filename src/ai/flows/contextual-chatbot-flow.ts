@@ -62,8 +62,6 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
   const validationResult = ContextualChatInputSchema.safeParse(input);
   if (!validationResult.success) {
     console.error("[contextualChatWithAssistant] Invalid input:", validationResult.error);
-    // It's better to return a structured error or a user-friendly message.
-    // Forcing a specific error format might not be ideal if the consumer expects ContextualChatOutputSchema.
     return { response: `Invalid input: ${validationResult.error.message}` };
   }
   const validatedInput = validationResult.data;
@@ -81,9 +79,6 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
     systemPromptText = dashboardSystemPromptTemplate;
     handlebarsArgs.patientDataContext = validatedInput.patientDataContext;
   } else {
-    // This case should ideally not be reached if input validation is exhaustive
-    // For example, if contextType was not one of the enum values.
-    // However, safeParse should catch this. This is a fallback.
     console.error("[contextualChatWithAssistant] Unknown contextType:", validatedInput.contextType);
     return { response: "Internal error: Unknown chat context." };
   }
@@ -95,7 +90,6 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
 
 
   try {
-    // Construct messages for the AI. Genkit expects MessageData[] for prompt.
     const messagesForAI: MessageData[] = [];
     if (validatedInput.history) {
       validatedInput.history.forEach(msg => {
@@ -107,28 +101,22 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
     console.log("[contextualChatWithAssistant] Calling ai.generate with constructed messages and system prompt.");
     
     const modelResponse = await ai.generate({
-      prompt: messagesForAI, // This is an array of MessageData
+      model: 'googleai/gemini-1.5-flash-latest', // Explicitly use gemini-1.5-flash-latest
+      prompt: messagesForAI, 
       system: systemPromptText,
-      templateArgs: handlebarsArgs, // Pass patientDataContext for Handlebars rendering in system prompt
-      output: { format: 'text' }, // Expecting text output from Gemini
-      // Ensure ai-instance.ts is configured to use a Gemini model by default or specify one here:
-      // model: ai.getModel('gemini-1.5-flash-latest'), 
+      templateArgs: handlebarsArgs, 
+      output: { format: 'text' }, 
     });
 
-    const responseText = modelResponse.text; // Access the text property directly
+    const responseText = modelResponse.text; 
     console.log("[contextualChatWithAssistant] ai.generate response received. Text:", responseText);
 
     if (!responseText?.trim()) {
       console.warn("[contextualChatWithAssistant] Received empty or invalid response from model.");
-      // Provide a more user-friendly message if the AI returns nothing.
       return { response: "Sorry, I couldn't generate a response at this time. Please try again."};
     }
 
-    // Parse the responseText against the output schema
-    // If the output schema expects an object like { response: "..." }, then:
     return ContextualChatOutputSchema.parse({ response: responseText });
-    // If the schema was z.string(), then it would be:
-    // return ContextualChatOutputSchema.parse(responseText);
 
   } catch (error: unknown) {
     console.error("[contextualChatWithAssistant] Error processing chat request:", error);
@@ -136,7 +124,6 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
     if (error instanceof Error) {
       errorMessage = `Error: ${error.message}`;
     }
-    // It's generally better to return a user-friendly error than to rethrow and break the UI.
     return { response: errorMessage };
   }
 }
