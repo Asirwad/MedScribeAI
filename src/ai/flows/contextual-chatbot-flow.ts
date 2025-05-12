@@ -1,45 +1,51 @@
 'use server';
+
 /**
- * @fileOverview A contextual chatbot flow using Genkit (Gemini) for the MedScribeAI Assistant.
- * This chatbot's behavior and knowledge adapt based on whether it's on the landing page or the main dashboard with patient data.
- *
- * - contextualChatWithAssistant - Handles chatbot interaction with context.
- * - ContextualChatMessage - Represents a single message in the chat history.
- * - ContextualChatInput - Input type for contextualChatWithAssistant.
- * - ContextualChatOutput - Output type for contextualChatWithAssistant.
+ * @fileOverview Contextual chatbot flow using Genkit (Gemini) for the MedScribeAI Assistant.
  */
 
 import { z } from 'zod';
 import { ai } from '@/ai/ai-instance'; // Ensure this uses Gemini
-import type { MessageData } from 'genkit';
 
 // --- Schemas ---
 const ContextualChatMessageSchema = z.object({
-  role: z.enum(['user', 'model'] as const), // System prompts are handled internally by the flow
+  role: z.enum(['user', 'model'] as const),
   content: z.string(),
 });
 export type ContextualChatMessage = z.infer<typeof ContextualChatMessageSchema>;
 
 const ContextualChatInputSchema = z.object({
-  message: z.string().describe('The latest message from the user.'),
-  history: z.array(ContextualChatMessageSchema).optional().describe('The previous conversation history (user and model messages only).'),
-  contextType: z.enum(['landingPage', 'dashboard'] as const).describe("The context in which the chat is occurring."),
-  patientDataContext: z.string().optional().describe("Serialized patient data including history, observations, and SOAP note. Only provided when contextType is 'dashboard'."),
+  message: z.string().min(1, "Message cannot be empty."),
+  history: z.array(ContextualChatMessageSchema).optional(),
+  contextType: z.enum(['landingPage', 'dashboard'] as const),
+  patientDataContext: z.string().optional(),
 });
 export type ContextualChatInput = z.infer<typeof ContextualChatInputSchema>;
 
 const ContextualChatOutputSchema = z.object({
-  response: z.string().describe("The assistant's response message."),
+  response: z.string(),
 });
 export type ContextualChatOutput = z.infer<typeof ContextualChatOutputSchema>;
 
 // --- System Prompts ---
 const landingPageSystemPrompt = `You are MedScribeAI Assistant.
-Your primary role is to provide helpful and concise information about the MedScribeAI application, its features, how it works (e.g., its multi-agent system), and general concepts related to AI in medical documentation.
-Do NOT ask for or discuss specific patient information.
-If asked about medical advice, politely decline and state you are an AI assistant for the application.
-Keep responses informative and to the point. If you don't know an answer, say so.
-Do not break character. You are a friendly and professional assistant for the MedScribeAI software.`;
+
+MedScribeAI is an open-source, agentic clinical documentation assistant designed to reduce clinician burnout and improve efficiency by automating the creation of SOAP notes, billing code suggestions, and EHR interactions using a network of LLM-powered agents.
+
+Your role is to provide clear, helpful, and concise explanations about the MedScribeAI application, its capabilities, architecture, and value. You may describe its multi-agent system, including the Pre-Visit Agent, Real-Time Listening Agent, Documentation Agent, EHR Agent, and the planned Learning Agent.
+
+Key features include:
+- Automation of SOAP notes and CPT/ICD-10 code generation.
+- Real-time transcription and clinical reasoning support.
+- Simulation of a FHIR-compliant EHR via Firebase.
+- Agent-based modular architecture designed for extensibility.
+
+MedScribeAI is not a medical device and does not provide clinical advice. You should not respond to medical questions, interpret patient data, or simulate diagnoses. If asked, politely explain that you are an AI assistant for the MedScribeAI software and do not provide medical advice.
+
+If a user inquires about technical implementation, you may reference its use of Firestore (as a FHIR-compliant backend), agentic workflows, and LLM orchestration. If a question falls outside the documented functionality or future roadmap, acknowledge this clearly and suggest that more information may become available in future updates.
+
+Remain professional, focused, and aligned with your purpose: to explain how MedScribeAI works and how it supports clinicians through intelligent documentation assistance.`;
+
 
 const dashboardSystemPromptTemplate = `You are MedScribeAI Assistant, an AI clinical assistant.
 You are currently helping a clinician with a specific patient on the MedScribeAI dashboard.
@@ -54,10 +60,31 @@ If information is not in the provided context, state that clearly.
 Do NOT provide medical advice beyond what is directly inferable from the provided patient data.
 Be concise and professional.`;
 
+// --- Retry Utility ---
+async function retry<T>(
+  fn: () => Promise<T>,
+  retries = 2,
+  delay = 500
+): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt >= retries) throw err;
+      const backoff = delay * Math.pow(2, attempt);
+      console.warn(`[contextualChatWithAssistant] Retry #${attempt + 1} after ${backoff}ms due to error:`, err);
+      await new Promise(res => setTimeout(res, backoff));
+      attempt++;
+    }
+  }
+}
 
 // --- Exported Flow Function ---
-export async function contextualChatWithAssistant(input: ContextualChatInput): Promise<ContextualChatOutput> {
-  console.log("[contextualChatWithAssistant] Entered function with input:", JSON.stringify(input, null, 2));
+export async function contextualChatWithAssistant(
+  input: ContextualChatInput
+): Promise<ContextualChatOutput> {
+  console.log("[contextualChatWithAssistant] Function start. Input:", JSON.stringify(input, null, 2));
 
   const validationResult = ContextualChatInputSchema.safeParse(input);
   if (!validationResult.success) {
@@ -72,9 +99,11 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
   if (validatedInput.contextType === 'landingPage') {
     systemPromptText = landingPageSystemPrompt;
   } else if (validatedInput.contextType === 'dashboard') {
-    if (!validatedInput.patientDataContext) {
-      console.warn("[contextualChatWithAssistant] Dashboard context selected but patientDataContext is missing.");
-      return { response: "Cannot assist with patient data as it was not provided. Please select a patient." };
+    if (!validatedInput.patientDataContext?.trim()) {
+      console.warn("[contextualChatWithAssistant] Missing patientDataContext for dashboard context.");
+      return {
+        response: "Cannot assist with patient data as it was not provided. Please select a patient.",
+      };
     }
     systemPromptText = dashboardSystemPromptTemplate;
     handlebarsArgs.patientDataContext = validatedInput.patientDataContext;
@@ -83,47 +112,57 @@ export async function contextualChatWithAssistant(input: ContextualChatInput): P
     return { response: "Internal error: Unknown chat context." };
   }
 
-  console.log("[contextualChatWithAssistant] Using system prompt (template for dashboard):", systemPromptText.substring(0, 100) + "...");
-  if (Object.keys(handlebarsArgs).length > 0) {
-    console.log("[contextualChatWithAssistant] Handlebars arguments:", handlebarsArgs);
+  // Properly format conversation history for Gemini
+  let conversationHistory = '';
+  
+  // Convert chat history if provided
+  if (validatedInput.history && validatedInput.history.length > 0) {
+    for (const msg of validatedInput.history) {
+      if (!msg.content.trim()) continue;
+      const rolePrefix = msg.role === 'user' ? 'User: ' : 'Assistant: ';
+      conversationHistory += `${rolePrefix}${msg.content}\n\n`;
+    }
   }
-
+  
+  // Add latest user message
+  conversationHistory += `User: ${validatedInput.message}`;
+  
+  // Prepare the full prompt with system instructions and conversation history
+  let fullPrompt = systemPromptText;
+  
+  // Handle dashboard context with patient data templating
+  if (validatedInput.contextType === 'dashboard') {
+    // Replace handlebars templates in system prompt
+    const patientDataContext = validatedInput.patientDataContext || '';
+    fullPrompt = dashboardSystemPromptTemplate.replace('{{{patientDataContext}}}', patientDataContext);
+  }
+  
+  // Add conversation history
+  fullPrompt += `\n\n${conversationHistory}\n\nAssistant:`;
 
   try {
-    const messagesForAI: MessageData[] = [];
-    if (validatedInput.history) {
-      validatedInput.history.forEach(msg => {
-        messagesForAI.push({ role: msg.role, content: [{ text: msg.content }] });
-      });
-    }
-    messagesForAI.push({ role: 'user', content: [{ text: validatedInput.message }] });
-    
-    console.log("[contextualChatWithAssistant] Calling ai.generate with constructed messages and system prompt.");
-    
-    const modelResponse = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest', // Explicitly use gemini-1.5-flash-latest
-      prompt: messagesForAI, 
-      system: systemPromptText,
-      templateArgs: handlebarsArgs, 
-      output: { format: 'text' }, 
-    });
+    console.log("[contextualChatWithAssistant] Invoking ai.generate with prompt:", fullPrompt);
 
-    const responseText = modelResponse.text; 
-    console.log("[contextualChatWithAssistant] ai.generate response received. Text:", responseText);
+    const modelResponse = await retry(() =>
+      ai.generate(fullPrompt)
+    );
 
-    if (!responseText?.trim()) {
-      console.warn("[contextualChatWithAssistant] Received empty or invalid response from model.");
-      return { response: "Sorry, I couldn't generate a response at this time. Please try again."};
+    const responseText = modelResponse?.text?.trim();
+    if (!responseText) {
+      console.warn("[contextualChatWithAssistant] Empty response from model.");
+      return {
+        response: "Sorry, I couldn't generate a response at this time. Please try again.",
+      };
     }
 
     return ContextualChatOutputSchema.parse({ response: responseText });
 
   } catch (error: unknown) {
-    console.error("[contextualChatWithAssistant] Error processing chat request:", error);
-    let errorMessage = "An error occurred while processing your chat request with the assistant.";
+    console.error("[contextualChatWithAssistant] Error during ai.generate:", error);
+    let message = "An error occurred while processing your request.";
     if (error instanceof Error) {
-      errorMessage = `Error: ${error.message}`;
+      message += ` Details: ${error.message}`;
     }
-    return { response: errorMessage };
+    return { response: message };
   }
 }
