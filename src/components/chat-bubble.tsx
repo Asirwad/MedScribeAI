@@ -3,22 +3,26 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, X, Send, Loader2 } from 'lucide-react'; // Added Send, Loader2
+import { MessageSquare, X, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
-import { chatWithAssistant, type ChatMessage } from '@/ai/flows/chatbot-flow'; // Import the flow and types
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { contextualChatWithAssistant, type ContextualChatMessage, type ContextualChatInput } from '@/ai/flows/contextual-chatbot-flow'; // Updated import
+import { useToast } from '@/hooks/use-toast';
 
-// Define message type for internal state management
-interface UIMessage extends ChatMessage {
-  id: string; // Add unique ID for list rendering
+interface UIMessage extends ContextualChatMessage {
+  id: string;
 }
 
-export function ChatBubble() {
+interface ChatBubbleProps {
+  contextType: 'landingPage' | 'dashboard';
+  patientDataContext?: string | null; // Optional, only for dashboard
+}
+
+export function ChatBubble({ contextType, patientDataContext }: ChatBubbleProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<UIMessage[]>([ // Initialize with a greeting
-     { id: 'greeting-1', role: 'model', content: 'Hi there! How can I help you with MedScribeAI today?' },
+  const [messages, setMessages] = useState<UIMessage[]>([
+    { id: 'greeting-1', role: 'model', content: 'Hi there! How can I help you today?' },
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,105 +34,85 @@ export function ChatBubble() {
     setIsOpen(!isOpen);
   };
 
-   // Scroll to bottom whenever messages change
-   useEffect(() => {
-     if (scrollAreaRef.current) {
-        // Find the viewport element within the ScrollArea
-        const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (scrollElement) {
-          // Use setTimeout to ensure scrolling happens after the DOM update
-          setTimeout(() => {
-            scrollElement.scrollTop = scrollElement.scrollHeight;
-          }, 0);
-        }
-     }
-   }, [messages]); // Dependency: messages array
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollElement) {
+        setTimeout(() => {
+          scrollElement.scrollTop = scrollElement.scrollHeight;
+        }, 0);
+      }
+    }
+  }, [messages]);
 
-   // Focus input when chat opens
-   useEffect(() => {
-     if (isOpen && inputRef.current) {
-       inputRef.current.focus();
-     }
-   }, [isOpen]);
-
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(event.target.value);
   };
 
-   // Function to handle sending a message
-   const handleSendMessage = useCallback(async () => {
-     const messageText = inputValue.trim();
-     if (!messageText || isLoading) return;
+  const handleSendMessage = useCallback(async () => {
+    const messageText = inputValue.trim();
+    if (!messageText || isLoading) return;
 
-     // Add user message to UI immediately
-     const userMessage: UIMessage = {
-       id: `user-${Date.now()}`,
-       role: 'user',
-       content: messageText,
-     };
-     setMessages(prev => [...prev, userMessage]);
-     setInputValue(''); // Clear input field
-     setIsLoading(true); // Set loading state
+    const userMessage: UIMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: messageText,
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
 
-     // Prepare history for the AI (exclude IDs and the initial greeting for cleaner history)
-     // Only include messages that are not the initial greeting.
-     const historyForAI: ChatMessage[] = messages
-        .filter(msg => msg.id !== 'greeting-1') // Exclude the initial greeting
-        .map(({ role, content }) => ({ role, content })); // Map to the expected format
+    const historyForAI: ContextualChatMessage[] = messages
+      .filter(msg => msg.id !== 'greeting-1') // Exclude greeting
+      .map(({ role, content }) => ({ role, content }));
 
-      // The latest user message should be passed separately in the input object,
-      // not duplicated in the history array sent to the flow.
-      const inputForAI: Parameters<typeof chatWithAssistant>[0] = {
-          message: messageText, // The current message
-          history: historyForAI, // The history *before* the current message
+    const inputForAI: ContextualChatInput = {
+      message: messageText,
+      history: historyForAI,
+      contextType: contextType,
+      patientDataContext: contextType === 'dashboard' ? patientDataContext : undefined,
+    };
+
+    console.log("[ChatBubble] Calling contextualChatWithAssistant with input:", JSON.stringify(inputForAI, null, 2));
+
+    try {
+      const result = await contextualChatWithAssistant(inputForAI);
+      console.log("[ChatBubble] Received result from contextualChatWithAssistant:", JSON.stringify(result, null, 2));
+
+      const assistantMessage: UIMessage = {
+        id: `model-${Date.now()}`,
+        role: 'model',
+        content: result.response,
       };
+      setMessages(prev => [...prev, assistantMessage]);
 
-     // Log before calling the server action
-     console.log("[ChatBubble] Calling chatWithAssistant with input:", JSON.stringify(inputForAI, null, 2));
-
-     try {
-        // Call the Genkit flow (server action)
-       const result = await chatWithAssistant(inputForAI);
-
-        // Log the result received from the server action
-        console.log("[ChatBubble] Received result from chatWithAssistant:", JSON.stringify(result, null, 2));
-
-        // Add AI response to UI
-       const assistantMessage: UIMessage = {
-         id: `model-${Date.now()}`,
-         role: 'model',
-         content: result.response, // result now directly matches ChatOutputSchema
-       };
-       setMessages(prev => [...prev, assistantMessage]);
-
-     } catch (error) {
-       console.error('[ChatBubble] Error calling chatWithAssistant:', error);
-       // Display the error message received from the flow (if available) or a generic one
-       const errorMessage = (error instanceof Error) ? error.message : 'Sorry, I encountered an issue communicating with the assistant. Please try again later.';
-       toast({
-         title: 'Chatbot Error',
-         description: errorMessage,
-         variant: 'destructive',
-       });
-        // Add an error message to the chat UI
-        setMessages(prev => [...prev, { id: `error-${Date.now()}`, role: 'model', content: `Error: ${errorMessage}` }]);
-     } finally {
-       setIsLoading(false); // Reset loading state
-       // Refocus input after response (or error)
-       inputRef.current?.focus();
-     }
-   // Include `messages` in dependencies as history depends on it.
-   }, [inputValue, isLoading, messages, toast]);
-
+    } catch (error) {
+      console.error('[ChatBubble] Error calling contextualChatWithAssistant:', error);
+      const errorMessage = (error instanceof Error) ? error.message : 'Sorry, an error occurred.';
+      toast({
+        title: 'Chatbot Error',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      setMessages(prev => [...prev, { id: `error-${Date.now()}`, role: 'model', content: `Error: ${errorMessage}` }]);
+    } finally {
+      setIsLoading(false);
+      inputRef.current?.focus();
+    }
+  }, [inputValue, isLoading, messages, toast, contextType, patientDataContext]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault(); // Prevent default form submission/newline
+      event.preventDefault();
       handleSendMessage();
     }
   };
-
 
   const bubbleVariants = {
     hidden: { opacity: 0, scale: 0.5, y: 50 },
@@ -142,10 +126,8 @@ export function ChatBubble() {
     exit: { opacity: 0, y: 20, scale: 0.95, transition: { duration: 0.2, ease: 'easeIn' } },
   };
 
-
   return (
     <>
-      {/* Floating Action Button (FAB) */}
       <motion.div
         className="fixed bottom-6 right-6 z-50"
         variants={bubbleVariants}
@@ -186,7 +168,6 @@ export function ChatBubble() {
         </Button>
       </motion.div>
 
-      {/* Chat Window */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -196,13 +177,12 @@ export function ChatBubble() {
             animate="visible"
             exit="exit"
             className={cn(
-                "fixed bottom-24 right-6 z-40", // Position above the FAB
-                "w-[calc(100vw-3rem)] max-w-sm h-[60vh] max-h-[500px]", // Sizing
+                "fixed bottom-24 right-6 z-40",
+                "w-[calc(100vw-3rem)] max-w-sm h-[60vh] max-h-[500px]",
                 "bg-card border border-border rounded-lg shadow-xl",
                 "flex flex-col overflow-hidden"
              )}
           >
-             {/* Header */}
              <div className="flex items-center justify-between p-3 border-b bg-muted/50 flex-shrink-0">
                 <h3 className="text-sm font-semibold text-foreground">MedScribeAI Assistant</h3>
                 <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground" onClick={toggleChat}>
@@ -210,7 +190,6 @@ export function ChatBubble() {
                 </Button>
              </div>
 
-              {/* Chat Content Area */}
                <ScrollArea className="flex-grow p-4" ref={scrollAreaRef}>
                   <div className="space-y-4">
                     {messages.map((message) => (
@@ -223,18 +202,16 @@ export function ChatBubble() {
                       >
                         <div
                           className={cn(
-                            "p-2 rounded-lg max-w-[80%] text-sm break-words", // Added break-words
+                            "p-2 rounded-lg max-w-[80%] text-sm break-words",
                             message.role === 'user'
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted text-muted-foreground"
                           )}
                         >
-                          {/* Simple rendering of content */}
                           {message.content}
                         </div>
                       </div>
                     ))}
-                     {/* Loading indicator */}
                     {isLoading && (
                         <div className="flex justify-start">
                             <div className="bg-muted p-2 rounded-lg max-w-[80%] text-sm text-muted-foreground flex items-center gap-2">
@@ -246,8 +223,6 @@ export function ChatBubble() {
                   </div>
                </ScrollArea>
 
-
-             {/* Input Area */}
              <div className="p-3 border-t flex items-center gap-2 flex-shrink-0">
                  <input
                     ref={inputRef}
@@ -255,14 +230,14 @@ export function ChatBubble() {
                     placeholder="Type your message..."
                     value={inputValue}
                     onChange={handleInputChange}
-                    onKeyDown={handleKeyDown} // Add keydown handler
+                    onKeyDown={handleKeyDown}
                     className="flex-grow p-2 border rounded-md text-sm bg-background focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                    disabled={isLoading} // Disable input when loading
+                    disabled={isLoading}
                   />
                   <Button
                     size="icon"
                     onClick={handleSendMessage}
-                    disabled={isLoading || !inputValue.trim()} // Disable if loading or input empty
+                    disabled={isLoading || !inputValue.trim()}
                     className="w-9 h-9"
                   >
                     {isLoading ? (
@@ -279,4 +254,3 @@ export function ChatBubble() {
     </>
   );
 }
-
