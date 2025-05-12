@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { Open_Sans, Poppins } from 'next/font/google'; // Import Poppins
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { ThemeProvider } from '@/components/theme-provider';
+// Removed ThemeProvider from here as it's handled by sub-layouts
 import { cn } from '@/lib/utils'; // Import cn
 
 // Configure Open Sans for body text
@@ -33,19 +33,12 @@ export default function RootLayout({
   return (
     // Apply both font variables to the html tag
     <html lang="en" className={cn(openSans.variable, poppins.variable)} suppressHydrationWarning>
-      {/* Removed extra space causing hydration error */}
       <body
         className="antialiased font-sans" // Use the default sans font which now includes Open Sans
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        {/* ThemeProvider is now in specific layouts (landing/layout.tsx and dashboard/layout.tsx) */}
+        {children}
+        <Toaster />
       </body>
     </html>
   );
